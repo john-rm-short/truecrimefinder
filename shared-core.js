@@ -2408,20 +2408,44 @@
     return items;
   }
 
-  async function fetchLiveTvMazeCrimeShows(term = 'crime documentary', limit = 12) {
-    const cacheKey = `tvmaze_tc_shows_${term.toLowerCase()}_${limit}`;
+  // Strict True Crime filter for live TVMaze feeds (excludes talk shows, soaps, sitcoms, game shows, sports, nature docs, and scripted comedy/fantasy)
+  const EXCLUDED_SHOW_TYPES = new Set(['Animation', 'Talk Show', 'Game Show', 'Sports', 'Variety', 'Award Show', 'Panel Show']);
+  const EXCLUDED_GENRES = new Set(['Comedy', 'Children', 'Food', 'Travel', 'Nature', 'Music', 'Sports', 'Science-Fiction', 'Fantasy', 'Supernatural', 'Anime', 'DIY', 'Gardening']);
+  const DEDICATED_CRIME_NET_RE = /\b(investigation discovery|^id$|oxygen|oxygen true crime|court tv|crime \+ investigation)\b/i;
+  const TRUE_CRIME_SIGNAL_RE = /\b(true crime|murder|homicide|forensic|cold case|dateline|48 hours|20\/20|serial killer|unsolved|autopsy|interrogation|snapped|first 48|evil lives here|american monster|wrongful conviction|abducted|kidnap|body cam|detective|stalker|cult|heist|scam|fraud|manhunt|suspect|trial|verdict|inmate|prison|death row|crime scene|missing person|disappeared)\b/i;
+
+  function isAuthenticTrueCrimeShow(s, epName = '') {
+    if (!s || !s.name) return false;
+    if (EXCLUDED_SHOW_TYPES.has(s.type)) return false;
+    const genres = Array.isArray(s.genres) ? s.genres : [];
+    if (genres.some(g => EXCLUDED_GENRES.has(g))) return false;
+
+    const net = s.network?.name || s.webChannel?.name || '';
+    const text = `${s.name} ${epName} ${stripHtml(s.summary || '')}`;
+    const hasCrimeGenre = genres.includes('Crime') || genres.includes('Mystery') || genres.includes('Legal');
+    const isNonFiction = s.type === 'Documentary' || s.type === 'News' || s.type === 'Reality';
+
+    // 1. Dedicated True Crime networks (ID, Oxygen, Court TV)
+    if (DEDICATED_CRIME_NET_RE.test(net) && (isNonFiction || hasCrimeGenre)) return true;
+
+    // 2. Non-fiction Documentary / News / Reality that explicitly covers Crime/Mystery/Legal or matches True Crime keywords
+    if (isNonFiction && (hasCrimeGenre || TRUE_CRIME_SIGNAL_RE.test(text))) return true;
+
+    // 3. Biographical / True Crime dramas that match explicit true crime keywords and have Crime genre
+    if (hasCrimeGenre && TRUE_CRIME_SIGNAL_RE.test(s.name + ' ' + stripHtml(s.summary || ''))) return true;
+
+    return false;
+  }
+
+  async function fetchLiveTvMazeCrimeShows(term = 'true crime documentary', limit = 12) {
+    const cacheKey = `tvmaze_tc_shows_v2_${term.toLowerCase()}_${limit}`;
     const cached = await cacheGet(cacheKey);
     if (cached) return cached;
 
     const data = await fetchJsonSafe(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(term)}`, 4800);
-    const CRIME_RE = /\b(crime|murder|homicide|detective|forensic|mystery|documentary|investigation|cold case|killer|trial|fbi|dateline|unsolved)\b/i;
     const items = (Array.isArray(data) ? data : [])
       .map(r => r.show)
-      .filter(s => s && (
-        (s.genres || []).some(g => ['Crime', 'Mystery', 'Legal', 'Thriller'].includes(g)) ||
-        s.type === 'Documentary' ||
-        CRIME_RE.test(s.name + ' ' + (s.summary || ''))
-      ))
+      .filter(s => isAuthenticTrueCrimeShow(s))
       .slice(0, limit)
       .map(normalizeTvMazeShow)
       .filter(Boolean);
@@ -2433,9 +2457,9 @@
     return items;
   }
 
-  // Live 7-Day US Crime & Documentary TV Broadcast Schedule (TVMaze /schedule + Canonical Weekly Drops)
+  // Live 7-Day US True Crime Broadcast & Podcast Schedule (TVMaze /schedule + Canonical Weekly Drops)
   async function fetchLiveCrimeSchedule(startSec, endSec, { forceRefresh = false } = {}) {
-    const cacheKey = `tc_schedule_v1_${Math.floor(startSec / 86400)}`;
+    const cacheKey = `tc_schedule_v3_${Math.floor(startSec / 86400)}`;
     if (!forceRefresh) {
       const cached = await cacheGet(cacheKey);
       if (cached) return cached;
@@ -2444,7 +2468,7 @@
     const schedules = [];
     const seenKeys = new Set();
 
-    // 1. Fetch live US broadcast schedule for today & upcoming days from TVMaze
+    // 1. Fetch live US broadcast schedule for today & upcoming days from TVMaze, strictly filtered to True Crime
     const dayPromises = [];
     for (let d = 0; d < 7; d++) {
       const dt = new Date((startSec + d * 86400) * 1000);
@@ -2452,19 +2476,12 @@
       dayPromises.push(fetchJsonSafe(`https://api.tvmaze.com/schedule?country=US&date=${isoDate}`, 4200));
     }
     const dayPayloads = await Promise.all(dayPromises);
-    const CRIME_NET_RE = /\b(investigation discovery|oxygen|a&e|cbs|nbc|abc|hbo|netflix|hulu|peacock|court tv|hlN|truTV)\b/i;
-    const CRIME_WORD_RE = /\b(crime|murder|forensic|detective|dateline|48 hours|20\/20|homicide|cold case|killer|mystery|suspect|trial|interrogation|missing|fbi|cops|law)\b/i;
 
     for (const dayList of dayPayloads) {
       if (!Array.isArray(dayList)) continue;
       for (const ep of dayList) {
         const s = ep?.show;
-        if (!s) continue;
-        const net = s.network?.name || s.webChannel?.name || '';
-        const genres = s.genres || [];
-        const isCrime = genres.includes('Crime') || genres.includes('Mystery') || genres.includes('Legal') ||
-          s.type === 'Documentary' || CRIME_NET_RE.test(net) || CRIME_WORD_RE.test(s.name + ' ' + (ep.name || ''));
-        if (!isCrime) continue;
+        if (!isAuthenticTrueCrimeShow(s, ep?.name || '')) continue;
 
         const media = normalizeTvMazeShow(s);
         if (!media) continue;

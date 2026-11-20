@@ -618,7 +618,7 @@
 
         const query = `query ($start: Int, $end: Int) { past72h { airingSchedules } activeOnas { media } catalog { media } }`;
         try {
-          const cacheKey = forceRefresh ? null : `tc_releases_v2_${activePlatform}`;
+          const cacheKey = forceRefresh ? null : `tc_releases_v3_${activePlatform}`;
           const data = await AF.anilistQuery(query, { start: start72h, end: nowSec }, { cacheKey, ttl: AF.TTL_DYNAMIC });
 
           const mergedMap = new Map();
@@ -764,7 +764,7 @@
 
         try {
           const data = await AF.anilistQuery('query { airingSchedules }', { start: startSec, end: endSec }, {
-            cacheKey: forceRefresh ? null : `tc_sched_week_v2_${startSec}`,
+            cacheKey: forceRefresh ? null : `tc_sched_week_v3_${startSec}`,
             ttl: AF.TTL_DYNAMIC
           });
           scheduleCache = data?.p1?.airingSchedules || [];

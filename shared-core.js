@@ -199,8 +199,50 @@
       ${line3 ? `<text x="180" y="331" text-anchor="middle" fill="#cbd5e1" font-family="sans-serif" font-weight="700" font-size="21">${escapeHtml(line3)}</text>` : ''}
       <text x="180" y="420" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-weight="600" font-size="13">${escapeHtml(String(subtitle || 'TRUE CRIME DOSSIER').slice(0, 32))}</text>
     </svg>`;
-    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
+
+  // Verified official poster artwork (TVMaze, Apple Podcasts, Wikimedia) for all 38 canonical case dossiers
+  const CANONICAL_POSTERS_BY_ID = {
+    101: 'https://static.tvmaze.com/uploads/images/original_untouched/8/21643.jpg',
+    102: 'https://static.tvmaze.com/uploads/images/original_untouched/46/116051.jpg',
+    103: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/33/e8/34/33e834a4-4331-db4e-bd8f-f7da0181429a/mza_11048451533177079714.jpg/600x600bb.jpg',
+    104: 'https://static.tvmaze.com/uploads/images/original_untouched/302/755405.jpg',
+    105: 'https://static.tvmaze.com/uploads/images/original_untouched/501/1253490.jpg',
+    106: 'https://static.tvmaze.com/uploads/images/original_untouched/261/652761.jpg',
+    107: 'https://upload.wikimedia.org/wikipedia/en/6/69/The_Thin_Blue_Line_poster.jpg',
+    108: 'https://static.tvmaze.com/uploads/images/original_untouched/406/1015974.jpg',
+    109: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/67/d5/37/67d537b9-b27e-240b-b9a2-43c13bdfd7fb/mza_4163719876671560348.jpeg/600x600bb.jpg',
+    110: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4a/bf/05/4abf053e-c55c-cca9-af59-5672ef215a06/mza_11437099833053467445.jpg/600x600bb.jpg',
+    111: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/90/24/36/90243638-a0ce-1268-2c4e-c34761253812/mza_17261943949558976257.jpg/600x600bb.jpg',
+    112: 'https://static.tvmaze.com/uploads/images/original_untouched/147/367698.jpg',
+    113: 'https://static.tvmaze.com/uploads/images/original_untouched/108/270245.jpg',
+    114: 'https://upload.wikimedia.org/wikipedia/en/9/91/Paradise_Lost_Dvd.jpg',
+    115: 'https://static.tvmaze.com/uploads/images/original_untouched/229/574456.jpg',
+    116: 'https://static.tvmaze.com/uploads/images/original_untouched/498/1246769.jpg',
+    117: 'https://static.tvmaze.com/uploads/images/original_untouched/491/1228376.jpg',
+    118: 'https://static.tvmaze.com/uploads/images/original_untouched/589/1474126.jpg',
+    119: 'https://static.tvmaze.com/uploads/images/original_untouched/479/1198803.jpg',
+    120: 'https://static.tvmaze.com/uploads/images/original_untouched/21/53051.jpg',
+    121: 'https://static.tvmaze.com/uploads/images/original_untouched/493/1233408.jpg',
+    122: 'https://upload.wikimedia.org/wikipedia/en/1/1b/Out_for_Blood_in_Silicon_Valley.jpeg',
+    123: 'https://static.tvmaze.com/uploads/images/original_untouched/219/549891.jpg',
+    124: 'https://upload.wikimedia.org/wikipedia/en/f/f5/DearZacharyTheatricalPoster.jpg',
+    125: 'https://static.tvmaze.com/uploads/images/original_untouched/542/1356223.jpg',
+    126: 'https://static.tvmaze.com/uploads/images/original_untouched/241/603427.jpg',
+    127: 'https://upload.wikimedia.org/wikipedia/en/0/0e/Poster_for_Girl_in_the_Picture.jpg',
+    128: 'https://static.tvmaze.com/uploads/images/original_untouched/477/1194108.jpg',
+    129: 'https://static.tvmaze.com/uploads/images/original_untouched/410/1027303.jpg',
+    130: 'https://upload.wikimedia.org/wikipedia/en/3/3b/Into_the_abyss_poster.jpg',
+    131: 'https://static.tvmaze.com/uploads/images/original_untouched/485/1213303.jpg',
+    132: 'https://upload.wikimedia.org/wikipedia/en/7/73/Cropsey.jpg',
+    133: 'https://upload.wikimedia.org/wikipedia/en/0/0b/Petit_family_photo.jpg',
+    134: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/15/96/f6/1596f64d-347f-87b6-b5f2-04dcc079a598/mza_10725073278164213531.jpeg/600x600bb.jpg',
+    135: 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/58/de/45/58de45d3-85ee-b7e3-ef4d-5bd791da00e9/mza_10200743568593208637.jpg/600x600bb.jpg',
+    136: 'https://static.tvmaze.com/uploads/images/original_untouched/289/723250.jpg',
+    137: 'https://static.tvmaze.com/uploads/images/original_untouched/263/658269.jpg',
+    138: 'https://static.tvmaze.com/uploads/images/original_untouched/426/1066184.jpg'
+  };
 
   // --------------------------------------------------------------------------
   // Canonical True Crime Taxonomy & Curated Multi-Decade Corpus
@@ -1055,7 +1097,7 @@
   // Normalize raw dossier catalog into unified media objects compatible across all 3 pages
   const CANONICAL_DOSSIER_LIST = RAW_DOSSIER_CATALOG.map(item => {
     const primaryPlat = PLATFORM_BY_ID[item.platforms?.[0]] || PLATFORM_CONFIG[0];
-    const posterUri = makeDossierPosterDataUri(item.title, `${item.studio} · ${item.seasonYear}`, primaryPlat.color, item.caseStatus.toUpperCase());
+    const posterUri = CANONICAL_POSTERS_BY_ID[item.id] || item.cover || makeDossierPosterDataUri(item.title, `${item.studio} · ${item.seasonYear}`, primaryPlat.color, item.caseStatus.toUpperCase());
     return {
       id: item.id,
       idMal: item.id,
@@ -1068,8 +1110,8 @@
         native: item.studio || ''
       },
       coverImage: {
-        large: item.cover || posterUri,
-        medium: item.cover || posterUri,
+        large: posterUri,
+        medium: posterUri,
         color: primaryPlat.color
       },
       format: item.format || 'DOCUSERIES',
@@ -1159,7 +1201,9 @@
     if (!rawUrl || typeof rawUrl !== 'string') return fallback;
     const trimmed = rawUrl.trim();
     if (!trimmed) return fallback;
-    if (trimmed.startsWith('./') || trimmed.startsWith('/') || trimmed.startsWith('data:image/svg+xml;utf8,')) return trimmed;
+    if (trimmed.startsWith('./') || trimmed.startsWith('/') || trimmed.startsWith('data:image/svg+xml')) {
+      return trimmed.replace(/^data:image\/svg\+xml;utf8,/i, 'data:image/svg+xml;charset=utf-8,');
+    }
     try {
       const parsed = new URL(trimmed);
       if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
@@ -1171,13 +1215,31 @@
 
   function getCover(media) {
     if (!media) return '';
+    const id = Number(media.id);
+    if (id && CANONICAL_POSTERS_BY_ID[id]) {
+      return CANONICAL_POSTERS_BY_ID[id];
+    }
     const raw = typeof media.cover === 'string' && media.cover
       ? media.cover
       : (media.coverImage?.large || media.coverImage?.extraLarge || media.coverImage?.medium || '');
-    if (raw && (raw.startsWith('data:image/svg+xml') || /^https?:\/\//i.test(raw))) {
+    if (raw && /^https?:\/\//i.test(raw)) {
       return raw.replace(/^http:\/\//i, 'https://');
     }
+    if (raw && raw.startsWith('data:image/svg+xml')) {
+      return raw.replace(/^data:image\/svg\+xml;utf8,/i, 'data:image/svg+xml;charset=utf-8,');
+    }
     return makeDossierPosterDataUri(getDisplayTitle(media), media.seasonYear || 'CASE FILE', '#f59e0b', media.caseStatus || 'DOSSIER');
+  }
+
+  // Automatic broken-image fallback to crisp SVG dossier poster
+  if (typeof global.addEventListener === 'function') {
+    global.addEventListener('error', (ev) => {
+      const el = ev.target;
+      if (el && el.tagName === 'IMG' && !el.dataset.fallbackApplied) {
+        el.dataset.fallbackApplied = '1';
+        el.src = makeDossierPosterDataUri(el.alt || 'Case Dossier', 'TRUE CRIME FILE', '#f59e0b', 'DOSSIER');
+      }
+    }, true);
   }
 
   function normalizeStatus(status) {

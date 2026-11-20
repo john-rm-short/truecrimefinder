@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="referrer" content="no-referrer-when-downgrade">
+  <title>TrueCrimeFinder — Evidence &amp; Case Vibe Graph</title>
+  <meta name="description" content="Seedless 3-layer Forensic Taxonomy Vibe Search, Force & Pure-JS t-SNE Evidence Graph, 5-slider DNA weights, and optional in-browser MiniLM neural embeddings.">
+  <meta name="theme-color" content="#080b12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TrueCrimeFinder">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="af-nav-host"></div>
+
+  <div class="graph-workspace">
+    <!-- LEFT: Toolbar + Interactive High-DPI Canvas + Accessible Node Table -->
+    <div class="graph-main">
+      <div class="graph-toolbar">
+        <!-- Row 1: Find Vibe + Seed Autocomplete + Case File Constellation -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <div style="display:flex;gap:6px;flex:1.4;min-width:240px;">
+            <input id="vibePromptInput" type="search" class="input input-full" placeholder="Describe a case vibe (e.g. 'forensic genealogy cold case', 'wrongful conviction exoneration', 'cult compound')..." aria-label="Find Case Vibe prompt">
+            <button type="button" class="btn btn-primary btn-sm" id="runVibeBtn">Find Case Vibe</button>
+          </div>
+          <div style="position:relative;flex:1;min-width:200px;">
+            <input id="seedSearchInput" type="search" class="input input-full" placeholder="Or seed by case / show / podcast..." autocomplete="off" aria-label="Seed graph by case or show">
+            <div id="seedDropdown" class="search-dropdown" role="listbox"></div>
+          </div>
+          <button type="button" class="btn btn-emerald btn-sm" id="seedWatchlistBtn">★ Case File Constellation</button>
+        </div>
+
+        <!-- Row 2: Preset Forensic Vibe Chips -->
+        <div class="pills-row" id="vibePresetsBar">
+          <span style="font-size:11px;color:var(--text-dim);font-weight:700;">CASE VIBES:</span>
+          <button type="button" class="pill vibe-chip" data-vibe="forensic genealogy cold case">Forensic Genealogy Cold Case</button>
+          <button type="button" class="pill vibe-chip" data-vibe="wrongful conviction exoneration trial">Wrongful Conviction &amp; Exoneration</button>
+          <button type="button" class="pill vibe-chip" data-vibe="cult compound whistleblower archival">Cult &amp; High-Control Group</button>
+          <button type="button" class="pill vibe-chip" data-vibe="corporate fraud scam whistleblower">Corporate Fraud &amp; Con Artists</button>
+          <button type="button" class="pill vibe-chip" data-vibe="1970s 1980s serial profiler interrogation">70s/80s Behavioral Profiling</button>
+          <button type="button" class="pill vibe-chip" data-vibe="southern gothic small-town legal mystery">Southern Gothic Trial</button>
+          <button type="button" class="pill vibe-chip" data-vibe="cyber sleuths investigative podcast">OSINT Sleuths &amp; Podcasts</button>
+        </div>
+
+        <!-- Row 3: Layout, Obscurity Ceiling, MiniLM Neural Mode, DNA Weights toggle, Table View -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+          <div class="pills-row">
+            <button type="button" class="pill active" id="layoutForceBtn">Force Layout</button>
+            <button type="button" class="pill" id="layoutTsneBtn">Pure-JS t-SNE</button>
+            <span style="color:var(--border-strong);">|</span>
+            <span style="font-size:11px;color:var(--text-dim);font-weight:700;">EDGES:</span>
+            <button type="button" class="pill active edge-mode-btn" data-mode="vibe">Forensic &amp; Tags</button>
+            <button type="button" class="pill edge-mode-btn" data-mode="lineage" title="Emphasize shared Investigator/Director &amp; Network genealogy">🧬 Investigator &amp; Network Lineage</button>
+            <span style="color:var(--border-strong);">|</span>
+            <span style="font-size:11px;color:var(--text-dim);font-weight:700;">PROFILE CEILING:</span>
+            <button type="button" class="pill active gem-btn" data-gem="0">All Cases</button>
+            <button type="button" class="pill gem-btn" data-gem="100000">&lt;100k</button>
+            <button type="button" class="pill gem-btn" data-gem="55000">Deep Cuts (&lt;55k)</button>
+          </div>
+          <div class="meta-row">
+            <button type="button" class="btn btn-xs btn-cyan" id="toggleNeuralBtn" title="Lazy-load in-browser Xenova/all-MiniLM-L6-v2 (q8) WASM embeddings">🧠 MiniLM Neural: OFF</button>
+            <button type="button" class="btn btn-xs" id="toggleWeightsBtn" aria-expanded="false">⚙ DNA Weights</button>
+            <button type="button" class="btn btn-xs" id="toggleTableBtn" aria-pressed="false">☰ Table View (A11y)</button>
+          </div>
+        </div>
+
+        <!-- Collapsible 5-Slider DNA Weights -->
+        <div id="dnaWeightsPanel" hidden style="padding-top:6px;border-top:1px solid var(--border);">
+          <div class="sliders-grid">
+            <label class="slider-item">
+              <span>Forensic Tags TF-IDF: <strong id="wTagVal">40%</strong></span>
+              <input type="range" id="wTag" min="0" max="100" value="40">
+            </label>
+            <label class="slider-item">
+              <span>Shared Investigators / Directors: <strong id="wStaffVal">18%</strong></span>
+              <input type="range" id="wStaff" min="0" max="100" value="18">
+            </label>
+            <label class="slider-item">
+              <span>Network / Producer Match: <strong id="wStudioVal">12%</strong></span>
+              <input type="range" id="wStudio" min="0" max="100" value="12">
+            </label>
+            <label class="slider-item">
+              <span>Crime Category Jaccard: <strong id="wGenreVal">12%</strong></span>
+              <input type="range" id="wGenre" min="0" max="100" value="12">
+            </label>
+            <label class="slider-item">
+              <span>Semantic Dossier / MiniLM: <strong id="wSemVal">18%</strong></span>
+              <input type="range" id="wSem" min="0" max="100" value="18">
+            </label>
+          </div>
+        </div>
+
+        <div id="vibeParsedReadout" style="font-size:11.5px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;"></div>
+      </div>
+
+      <!-- High-DPI Canvas Area -->
+      <div class="graph-canvas-wrap">
+        <canvas id="graphCanvas" aria-label="Interactive True Crime Evidence Graph Canvas"></canvas>
+
+        <div class="graph-legend" aria-hidden="true">
+          <span><i class="legend-dot" style="background:#f59e0b;"></i>Lead Case Seed</span>
+          <span><i class="legend-dot" style="background:#34d399;"></i>Saved Case File</span>
+          <span><i class="legend-dot" style="background:#f43f5e;"></i>Deep Cut (&lt;55k)</span>
+          <span><i class="legend-dot" style="background:#38bdf8;"></i>Selected Dossier</span>
+        </div>
+
+        <div class="graph-hud">
+          <button type="button" class="btn btn-xs" id="fitViewBtn">⌖ Fit View</button>
+          <button type="button" class="btn btn-xs" id="unpinAllBtn">Unpin All</button>
+          <span class="badge badge-muted" id="graphCountBadge">0 nodes</span>
+          <span class="badge badge-purple" id="neuralStatusBadge" hidden></span>
+        </div>
+
+        <!-- P1 Accessible Tabular Node List Fallback -->
+        <div id="nodeTableWrap" class="node-table-wrap" role="region" aria-label="Accessible Graph Nodes Table">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="margin:0;font-size:15px;">Accessible Case Dossier List (Keyboard &amp; Screen-Reader View)</h3>
+            <span style="font-size:12px;color:var(--text-muted);">Select any row to inspect &amp; edit in the Case Inspector</span>
+          </div>
+          <table class="af-table">
+            <thead>
+              <tr>
+                <th>Case / Show Title</th>
+                <th>Forensic Cluster</th>
+                <th>Rating</th>
+                <th>Reach</th>
+                <th>Dossier Status</th>
+                <th>Similarity</th>
+              </tr>
+            </thead>
+            <tbody id="nodeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Persistent Case Node Inspector with Inline Case File Editor -->
+    <aside class="graph-inspector" aria-label="Case Node Inspector">
+      <div id="inspectorContent">
+        <div class="empty-state" style="margin-top:20px;">
+          <div style="font-size:28px;margin-bottom:8px;">🕵️</div>
+          <strong>Evidence &amp; Vibe Graph Ready</strong>
+          <p style="font-size:12.5px;margin:8px 0 0;">Click any case node on the canvas (or in Table View) to inspect shared forensic signals, edit your Case File inline, attach a Wikipedia dossier, or expand connected cases.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="./shared-core.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const AF = window.TrueCrimeFinderCore;
+      AF.mountNav('graph');
+
+      const canvas = document.getElementById('graphCanvas');
+      const ctx = canvas.getContext('2d');
+
+      let nodes = [];
+      let edges = [];
+      let clusters = [];
+      let selectedId = null;
+      let hoveredId = null;
+      let layoutMode = 'force';
+      let gemCeiling = 0;
+      let neuralEnabled = false;
+      let neuralExtractor = null;
+      let neuralLoading = false;
+
+      let cam = { x: 0, y: 0, zoom: 1 };
+      let dragState = null;
+      let animHandle = null;
+      let simAlpha = 1;
+
+      const CLUSTER_COLORS = ['#f59e0b', '#38bdf8', '#f43f5e', '#34d399', '#c084fc', '#fbbf24', '#2dd4bf'];
+
+      function getWeights() {
+        const w = {
+          tag: Number(document.getElementById('wTag').value),
+          staff: Number(document.getElementById('wStaff').value),
+          studio: Number(document.getElementById('wStudio').value),
+          genre: Number(document.getElementById('wGenre').value),
+          sem: Number(document.getElementById('wSem').value)
+        };
+        const sum = (w.tag + w.staff + w.studio + w.genre + w.sem) || 1;
+        return {
+          tag: w.tag / sum,
+          staff: w.staff / sum,
+          studio: w.studio / sum,
+          genre: w.genre / sum,
+          sem: w.sem / sum
+        };
+      }
+
+      ['wTag', 'wStaff', 'wStudio', 'wGenre', 'wSem'].forEach(id => {
+        const inp = document.getElementById(id);
+        const valEl = document.getElementById(id + 'Val');
+        inp.addEventListener('input', () => {
+          valEl.textContent = inp.value + '%';
+          recomputeGraphSimilarity();
+        });
+      });
+
+      document.getElementById('toggleWeightsBtn').addEventListener('click', (ev) => {
+        const panel = document.getElementById('dnaWeightsPanel');
+        panel.hidden = !panel.hidden;
+        ev.currentTarget.setAttribute('aria-expanded', String(!panel.hidden));
+      });
+
+      function applyEdgePreset(mode) {
+        const presets = {
+          vibe: { wTag: 40, wStaff: 18, wStudio: 12, wGenre: 12, wSem: 18 },
+          lineage: { wTag: 10, wStaff: 50, wStudio: 30, wGenre: 5, wSem: 5 }
+        };
+        const cfg = presets[mode] || presets.vibe;
+        for (const [id, val] of Object.entries(cfg)) {
+          const inp = document.getElementById(id);
+          const lbl = document.getElementById(id + 'Val');
+          if (inp) inp.value = String(val);
+          if (lbl) lbl.textContent = val + '%';
+        }
+        document.querySelectorAll('.edge-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        recomputeGraphSimilarity();
+        AF.toast(mode === 'lineage' ? 'Switched to Investigator & Network Lineage weights (Investigators 50% · Network 30%).' : 'Switched to balanced Forensic & Tags weights.', 'info', 2200);
+      }
+
+      document.querySelectorAll('.edge-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => applyEdgePreset(btn.dataset.mode));
+      });
+
+      const STOP_WORDS = new Set([
+        'the','and','for','that','with','from','this','into','their','they','have','has','had','was','were','are','not','but','who','his','her','she','him','its','about','after','when','where','while','will','can','only','more','one','two','new','life','world','story','series','case','crime','true','years'
+      ]);
+
+      function tokenizeText(text) {
+        const words = String(text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/);
+        const set = new Set();
+        for (const w of words) {
+          if (w.length >= 4 && !STOP_WORDS.has(w)) set.add(w);
+        }
+        return set;
+      }
+
+      function buildNodeText(node) {
+        const a = node.anime;
+        const syn = AF.stripHtml(a.description || '').slice(0, 600);
+        const genres = (a.genres || []).join(', ');
+        const tags = (a.tags || []).slice(0, 10).map(t => t.name).join(', ');
+        const wiki = node.wikiText ? ' ' + node.wikiText.slice(0, 500) : '';
+        return `${AF.getDisplayTitle(a)}. Categories: ${genres}. Forensic Tags: ${tags}. ${syn}${wiki}`;
+      }
+
+      function cosineVectors(v1, v2) {
+        if (!v1 || !v2 || v1.length !== v2.length) return 0;
+        let dot = 0, n1 = 0, n2 = 0;
+        for (let i = 0; i < v1.length; i++) {
+          dot += v1[i] * v2[i];
+          n1 += v1[i] * v1[i];
+          n2 += v2[i] * v2[i];
+        }
+        return (n1 && n2) ? Math.max(0, dot / (Math.sqrt(n1) * Math.sqrt(n2))) : 0;
+      }
+
+      async function enableMiniLM() {
+        const badge = document.getElementById('neuralStatusBadge');
+        const btn = document.getElementById('toggleNeuralBtn');
+        if (neuralLoading) return;
+
+        if (!neuralExtractor) {
+          neuralLoading = true;
+          badge.hidden = false;
+          badge.textContent = 'Loading Xenova/all-MiniLM-L6-v2 (q8 WASM)...';
+          btn.disabled = true;
+          try {
+            const mod = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+            mod.env.allowLocalModels = false;
+            neuralExtractor = await mod.pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { quantized: true });
+            AF.toast('MiniLM WASM model loaded! Computing 384-d case dossier embeddings...', 'success');
+          } catch (err) {
+            neuralLoading = false;
+            neuralEnabled = false;
+            btn.disabled = false;
+            btn.textContent = '🧠 MiniLM Neural: OFF';
+            badge.hidden = true;
+            AF.toast(`MiniLM load failed (falling back to lexical semantics): ${err.message}`, 'warn');
+            return;
+          }
+          neuralLoading = false;
+          btn.disabled = false;
+        }
+
+        await embedVisibleNodes();
+      }
+
+      async function embedVisibleNodes() {
+        if (!neuralEnabled || !neuralExtractor || !nodes.length) return;
+        const badge = document.getElementById('neuralStatusBadge');
+        badge.hidden = false;
+        let done = 0;
+        for (const n of nodes) {
+          const text = buildNodeText(n);
+          const hash = String(text.length) + ':' + text.slice(0, 32);
+          if (!n.embedding || n._embedHash !== hash) {
+            const cached = await AF.vectorGet(n.id);
+            if (cached && cached.textHash === hash && cached.vector?.length) {
+              n.embedding = cached.vector;
+              n._embedHash = hash;
+            } else {
+              badge.textContent = `Embedding ${++done}/${nodes.length} (384-d)...`;
+              const out = await neuralExtractor(text, { pooling: 'mean', normalize: true });
+              n.embedding = Array.from(out.data);
+              n._embedHash = hash;
+              await AF.vectorSet(n.id, n.embedding, hash);
+            }
+          }
+        }
+        badge.textContent = `MiniLM 384-d active (${nodes.length} vectors cached)`;
+        recomputeGraphSimilarity();
+      }
+
+      document.getElementById('toggleNeuralBtn').addEventListener('click', async () => {
+        neuralEnabled = !neuralEnabled;
+        const btn = document.getElementById('toggleNeuralBtn');
+        const badge = document.getElementById('neuralStatusBadge');
+        btn.textContent = neuralEnabled ? '🧠 MiniLM Neural: ON' : '🧠 MiniLM Neural: OFF';
+        btn.classList.toggle('btn-primary', neuralEnabled);
+        if (neuralEnabled) {
+          await enableMiniLM();
+        } else {
+          badge.hidden = true;
+          recomputeGraphSimilarity();
+        }
+      });
+
+      function getVisibleNodes() {
+        if (!gemCeiling) return nodes;
+        return nodes.filter(n => n.isSeed || (n.anime.popularity || 0) <= gemCeiling);
+      }
+
+      function recomputeGraphSimilarity() {
+        const vis = getVisibleNodes();
+        const N = vis.length;
+        if (!N) {
+          edges = [];
+          clusters = [];
+          renderNodeTable();
+          return;
+        }
+
+        const weights = getWeights();
+
+        const tagDF = new Map();
+        for (const n of vis) {
+          const seen = new Set();
+          for (const t of (n.anime.tags || [])) {
+            if (t.isMediaSpoiler) continue;
+            if (!seen.has(t.name)) {
+              seen.add(t.name);
+              tagDF.set(t.name, (tagDF.get(t.name) || 0) + 1);
+            }
+          }
+          n.tokens = tokenizeText(buildNodeText(n));
+        }
+
+        const meta = vis.map(n => {
+          const tagVec = new Map();
+          let tagNorm = 0;
+          for (const t of (n.anime.tags || [])) {
+            if (t.isMediaSpoiler) continue;
+            const idf = Math.log((N + 1) / ((tagDF.get(t.name) || 1) + 0.5)) + 0.5;
+            const val = ((t.rank || 50) / 100) * idf;
+            tagVec.set(t.name, val);
+            tagNorm += val * val;
+          }
+          const staffNames = new Set((n.anime.staff?.edges || []).map(e => (e.node?.name?.full || '').toLowerCase()).filter(Boolean));
+          const studioNames = new Set((n.anime.studios?.nodes || []).map(s => (s.name || '').toLowerCase()).filter(Boolean));
+          const genres = new Set(n.anime.genres || []);
+          return { tagVec, tagNorm: Math.sqrt(tagNorm) || 1, staffNames, studioNames, genres };
+        });
+
+        const simMatrix = Array.from({ length: N }, () => new Float64Array(N));
+        const allEdges = [];
+
+        for (let i = 0; i < N; i++) {
+          simMatrix[i][i] = 1;
+          for (let j = i + 1; j < N; j++) {
+            const A = meta[i], B = meta[j];
+            let dot = 0;
+            for (const [k, v] of A.tagVec) {
+              if (B.tagVec.has(k)) dot += v * B.tagVec.get(k);
+            }
+            const sTag = dot / (A.tagNorm * B.tagNorm);
+
+            let sharedStaff = 0;
+            for (const sName of A.staffNames) if (B.staffNames.has(sName)) sharedStaff++;
+            const sStaff = sharedStaff ? Math.min(1, sharedStaff / 1.5) : 0;
+
+            let sStudio = 0;
+            for (const stName of A.studioNames) if (B.studioNames.has(stName)) { sStudio = 1; break; }
+
+            let gInter = 0;
+            for (const g of A.genres) if (B.genres.has(g)) gInter++;
+            const gUnion = A.genres.size + B.genres.size - gInter;
+            const sGenre = gUnion ? gInter / gUnion : 0;
+
+            let sSem = 0;
+            if (neuralEnabled && vis[i].embedding && vis[j].embedding) {
+              sSem = cosineVectors(vis[i].embedding, vis[j].embedding);
+            } else {
+              let tInter = 0;
+              for (const tok of vis[i].tokens) if (vis[j].tokens.has(tok)) tInter++;
+              const tUnion = vis[i].tokens.size + vis[j].tokens.size - tInter;
+              sSem = tUnion ? Math.min(1, (tInter / tUnion) * 4.5) : 0;
+            }
+
+            const total =
+              weights.tag * sTag +
+              weights.staff * sStaff +
+              weights.studio * sStudio +
+              weights.genre * sGenre +
+              weights.sem * sSem;
+
+            simMatrix[i][j] = total;
+            simMatrix[j][i] = total;
+            allEdges.push({
+              a: vis[i],
+              b: vis[j],
+              weight: total,
+              breakdown: { sTag, sStaff, sStudio, sGenre, sSem }
+            });
+          }
+        }
+
+        const edgeMap = new Map();
+        for (let i = 0; i < N; i++) {
+          const incident = allEdges
+            .filter(e => e.a === vis[i] || e.b === vis[i])
+            .sort((x, y) => y.weight - x.weight)
+            .slice(0, 4);
+          for (const e of incident) {
+            if (e.weight < 0.08) continue;
+            const key = e.a.id < e.b.id ? `${e.a.id}_${e.b.id}` : `${e.b.id}_${e.a.id}`;
+            if (!edgeMap.has(key)) edgeMap.set(key, e);
+          }
+        }
+        edges = Array.from(edgeMap.values());
+
+        const clusterBuckets = new Map();
+        for (const n of vis) {
+          const topTag = (n.anime.tags || [])
+            .filter(t => !t.isMediaSpoiler && t.rank >= 60)
+            .sort((a, b) => {
+              const dfA = tagDF.get(a.name) || 1;
+              const dfB = tagDF.get(b.name) || 1;
+              const prefA = (dfA >= 2 && dfA <= Math.max(3, N * 0.5)) ? 1.5 : 0.7;
+              const prefB = (dfB >= 2 && dfB <= Math.max(3, N * 0.5)) ? 1.5 : 0.7;
+              return (b.rank * prefB) - (a.rank * prefA);
+            })[0];
+          const label = topTag?.name || n.anime.genres?.[0] || 'Core Dossier';
+          n.cluster = label;
+          if (!clusterBuckets.has(label)) clusterBuckets.set(label, []);
+          clusterBuckets.get(label).push(n);
+        }
+
+        clusters = Array.from(clusterBuckets.entries())
+          .filter(([, members]) => members.length >= 2)
+          .sort((a, b) => b[1].length - a[1].length)
+          .slice(0, 7)
+          .map(([label, members], idx) => ({
+            label,
+            members,
+            color: CLUSTER_COLORS[idx % CLUSTER_COLORS.length],
+            cx: 0, cy: 0, r: 80
+          }));
+
+        if (layoutMode === 'tsne') {
+          runPureJsTsne(vis, simMatrix);
+          fitToView();
+        } else {
+          simAlpha = 0.85;
+        }
+
+        document.getElementById('graphCountBadge').textContent = `${vis.length} cases · ${edges.length} links`;
+        renderNodeTable();
+        if (selectedId) renderInspector(selectedId);
+        requestDraw();
+      }
+
+      function runPureJsTsne(vis, simMatrix) {
+        const N = vis.length;
+        if (N <= 1) return;
+
+        let seed = 421337;
+        const rand = () => {
+          seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+          let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+          t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+
+        const P = Array.from({ length: N }, () => new Float64Array(N));
+        let sumP = 0;
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j < N; j++) {
+            if (i === j) continue;
+            const d = Math.max(0.01, 1 - simMatrix[i][j]);
+            const p = Math.exp(-d * d * 4.5);
+            P[i][j] = p;
+            sumP += p;
+          }
+        }
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j < N; j++) {
+            P[i][j] = Math.max(1e-9, (P[i][j] + P[j][i]) / (2 * (sumP || 1)));
+          }
+        }
+
+        const Y = vis.map((_, idx) => [
+          Math.cos((idx / N) * Math.PI * 2) * 10 + (rand() - 0.5) * 2,
+          Math.sin((idx / N) * Math.PI * 2) * 10 + (rand() - 0.5) * 2
+        ]);
+        const vel = vis.map(() => [0, 0]);
+
+        const iters = 140;
+        const lr = 45;
+        for (let iter = 0; iter < iters; iter++) {
+          const Q = Array.from({ length: N }, () => new Float64Array(N));
+          let sumQ = 0;
+          for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+              const dx = Y[i][0] - Y[j][0];
+              const dy = Y[i][1] - Y[j][1];
+              const q = 1 / (1 + dx * dx + dy * dy);
+              Q[i][j] = q;
+              Q[j][i] = q;
+              sumQ += 2 * q;
+            }
+          }
+          const exag = iter < 40 ? 2.5 : 1.0;
+          const mom = iter < 50 ? 0.5 : 0.8;
+          for (let i = 0; i < N; i++) {
+            let gx = 0, gy = 0;
+            for (let j = 0; j < N; j++) {
+              if (i === j) continue;
+              const qij = Math.max(1e-9, Q[i][j] / (sumQ || 1));
+              const mult = 4 * (exag * P[i][j] - qij) * Q[i][j];
+              gx += mult * (Y[i][0] - Y[j][0]);
+              gy += mult * (Y[i][1] - Y[j][1]);
+            }
+            vel[i][0] = mom * vel[i][0] - lr * gx;
+            vel[i][1] = mom * vel[i][1] - lr * gy;
+            Y[i][0] += vel[i][0];
+            Y[i][1] += vel[i][1];
+          }
+        }
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const [x, y] of Y) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+        const span = Math.max(maxX - minX, maxY - minY, 0.001);
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        for (let i = 0; i < N; i++) {
+          if (!vis[i].pinned) {
+            vis[i].x = ((Y[i][0] - cx) / span) * 660;
+            vis[i].y = ((Y[i][1] - cy) / span) * 460;
+            vis[i].vx = 0;
+            vis[i].vy = 0;
+          }
+        }
+      }
+
+      function addAnimeNodes(animeList, { reset = true, seedIds = new Set() } = {}) {
+        if (reset) {
+          nodes = [];
+          selectedId = null;
+        }
+        const existing = new Map(nodes.map(n => [n.id, n]));
+        const totalNew = animeList.length;
+
+        animeList.forEach((a, idx) => {
+          if (!a || !a.id) return;
+          if (existing.has(a.id)) {
+            if (seedIds.has(a.id)) existing.get(a.id).isSeed = true;
+            return;
+          }
+          const angle = (idx / Math.max(1, totalNew)) * Math.PI * 2;
+          const radius = seedIds.has(a.id) ? 30 : 140 + (idx % 4) * 55;
+          const img = new Image();
+          img.referrerPolicy = 'no-referrer';
+          img.onload = () => requestDraw();
+          img.src = AF.getCover(a);
+          const node = {
+            id: a.id,
+            anime: a,
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+            vx: 0,
+            vy: 0,
+            pinned: false,
+            isSeed: seedIds.has(a.id),
+            cluster: a.genres?.[0] || 'Core Dossier',
+            img,
+            wikiText: '',
+            embedding: null,
+            tokens: new Set()
+          };
+          nodes.push(node);
+          existing.set(a.id, node);
+        });
+
+        if (!selectedId && nodes.length) {
+          selectedId = (nodes.find(n => n.isSeed) || nodes[0]).id;
+        }
+        recomputeGraphSimilarity();
+        if (neuralEnabled && neuralExtractor) embedVisibleNodes();
+        fitToView();
+        renderInspector(selectedId);
+      }
+
+      let lastVibePrompt = '';
+
+      async function runVibeSearch(promptText) {
+        const q = String(promptText || '').trim();
+        if (!q) return;
+        lastVibePrompt = q;
+        document.getElementById('vibePromptInput').value = q;
+        const readout = document.getElementById('vibeParsedReadout');
+        readout.innerHTML = `<span class="spinner"></span> Resolving forensic taxonomy for "${AF.escapeHtml(q)}"...`;
+
+        try {
+          const taxonomy = await AF.getTaxonomy();
+          const parsed = AF.parseVibePrompt(q, taxonomy);
+          const candidates = await AF.fetchVibeCandidates(parsed, {
+            limit: 26,
+            maxPopularity: gemCeiling || null
+          });
+
+          readout.innerHTML = `
+            <span class="badge badge-cyan">${parsed.layersUsed.join(' + ') || 'Direct Case Match'}</span>
+            ${parsed.tags.map(t => `<span class="badge badge-accent">#${AF.escapeHtml(t)}</span>`).join('')}
+            ${parsed.genres.map(g => `<span class="badge badge-purple">${AF.escapeHtml(g)}</span>`).join('')}
+            ${parsed.decadeRange ? `<span class="badge badge-amber">${parsed.decadeRange.label}</span>` : ''}
+            ${gemCeiling ? `<span class="badge badge-amber">Reach &lt; ${AF.formatCompactNumber(gemCeiling)}</span>` : ''}
+            <span>(${candidates.length} case dossiers mapped)</span>
+          `;
+
+          const seedSet = new Set(candidates.slice(0, 2).map(c => c.id));
+          addAnimeNodes(candidates, { reset: true, seedIds: seedSet });
+          requestDraw();
+        } catch (err) {
+          readout.innerHTML = `<span style="color:var(--rose);">Vibe search failed: ${AF.escapeHtml(err.message)}</span>`;
+        }
+      }
+
+      async function seedByAnimeId(animeId) {
+        lastVibePrompt = '';
+        const readout = document.getElementById('vibeParsedReadout');
+        readout.innerHTML = `<span class="spinner"></span> Fetching lead case dossier &amp; forensic neighborhood...`;
+        try {
+          const data = await AF.anilistQuery('query { Media(id: $id) }', { id: Number(animeId) });
+          const seed = data?.Media;
+          if (!seed) throw new Error('Case file not found');
+
+          const recs = (seed.recommendations?.nodes || [])
+            .map(n => n.mediaRecommendation)
+            .filter(Boolean);
+
+          const combined = [seed, ...recs];
+          const dedup = Array.from(new Map(combined.map(m => [m.id, m])).values()).slice(0, 26);
+
+          readout.innerHTML = `<span class="badge badge-accent">Lead Case Seed: ${AF.escapeHtml(AF.getDisplayTitle(seed))}</span> <span>${dedup.length} connected case dossiers</span>`;
+          addAnimeNodes(dedup, { reset: true, seedIds: new Set([seed.id]) });
+        } catch (err) {
+          readout.innerHTML = `<span style="color:var(--rose);">Seed failed: ${AF.escapeHtml(err.message)}</span>`;
+        }
+      }
+
+      async function seedByWatchlist() {
+        lastVibePrompt = '';
+        const wlItems = Object.values(AF.getState().watchlist || {});
+        if (!wlItems.length) {
+          AF.toast('Your Case File Watchlist is empty! Add cases in Case Hub or import a Dossier Pack first.', 'warn');
+          return;
+        }
+        const readout = document.getElementById('vibeParsedReadout');
+        readout.innerHTML = `<span class="spinner"></span> Mapping your Case File constellation (${Math.min(wlItems.length, 24)} dossiers)...`;
+
+        const ids = wlItems
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.updatedAt || 0) - (a.updatedAt || 0))
+          .slice(0, 24)
+          .map(i => i.id);
+
+        try {
+          const data = await AF.anilistQuery('query ($ids: [Int]) { Page { media } }', { ids });
+          const list = data?.Page?.media || [];
+          readout.innerHTML = `<span class="badge badge-emerald">Case File Constellation</span> <span>${list.length} saved dossiers mapped — click any node and hit "+ Expand Connected Cases" to discover new leads!</span>`;
+          addAnimeNodes(list, { reset: true, seedIds: new Set(ids.slice(0, 5)) });
+        } catch (err) {
+          readout.innerHTML = `<span style="color:var(--rose);">Constellation map failed: ${AF.escapeHtml(err.message)}</span>`;
+        }
+      }
+
+      async function expandNodeNeighbors(node) {
+        if (!node) return;
+        AF.toast(`Expanding connected cases for "${AF.getDisplayTitle(node.anime)}"...`, 'info', 2200);
+        try {
+          const data = await AF.anilistQuery('query { Media(id: $id) }', { id: node.id });
+          const recs = (data?.Media?.recommendations?.nodes || [])
+            .map(r => r.mediaRecommendation)
+            .filter(Boolean);
+          if (!recs.length) return AF.toast('No additional connected cases found.', 'warn');
+          const before = nodes.length;
+          addAnimeNodes(recs, { reset: false });
+          const added = nodes.length - before;
+          AF.toast(added ? `Added ${added} connected case nodes to the graph!` : 'All top connected cases are already in the graph.', 'success');
+        } catch (err) {
+          AF.toast(`Expand failed: ${err.message}`, 'error');
+        }
+      }
+
+      // ----------------------------------------------------------------------
+      // Persistent Right-Hand Case Node Inspector (with Inline Watchlist Editor)
+      // ----------------------------------------------------------------------
+      function renderInspector(nodeId) {
+        const host = document.getElementById('inspectorContent');
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        const a = node.anime;
+        const title = AF.getDisplayTitle(a);
+        const stNow = AF.getState();
+        const wl = stNow.watchlist[a.id] || stNow.overrides[a.id] || null;
+        const isInWatchlist = Boolean(stNow.watchlist[a.id]);
+        const studios = (a.studios?.nodes || []).map(s => s.name).join(', ') || 'Independent';
+        const caseSt = AF.classifyDub(a);
+
+        const neighbors = edges
+          .filter(e => e.a.id === node.id || e.b.id === node.id)
+          .map(e => ({ other: e.a.id === node.id ? e.b : e.a, weight: e.weight, breakdown: e.breakdown }))
+          .sort((x, y) => y.weight - x.weight)
+          .slice(0, 5);
+
+        host.innerHTML = `
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <img src="${AF.escapeHtml(AF.getCover(a))}" alt="${AF.escapeHtml(title)}" style="width:76px;height:104px;object-fit:cover;border-radius:10px;border:1px solid var(--border-strong);flex-shrink:0;">
+            <div style="min-width:0;flex:1;">
+              <div class="meta-row" style="margin-bottom:4px;">
+                <span class="badge badge-accent">${AF.escapeHtml(node.cluster)}</span>
+                <span class="badge badge-cyan">${AF.escapeHtml(caseSt)}</span>
+                ${a.averageScore ? `<span class="badge badge-emerald">★ ${a.averageScore}%</span>` : ''}
+              </div>
+              <h3 style="margin:0 0 4px;font-size:15px;line-height:1.25;">${AF.escapeHtml(title)}</h3>
+              <div style="font-size:11.5px;color:var(--text-muted);">
+                ${AF.escapeHtml(a.format || 'DOSSIER')} · ${a.seasonYear || '—'} · ${AF.escapeHtml(studios)}
+              </div>
+            </div>
+          </div>
+
+          <div class="meta-row">
+            <button type="button" class="btn btn-primary btn-xs" id="insExpandBtn">+ Expand Connected Cases</button>
+            <button type="button" class="btn btn-cyan btn-xs" id="insWikiBtn">📖 Attach Wikipedia</button>
+            <button type="button" class="btn btn-xs" id="insPinBtn">${node.pinned ? '📌 Unpin' : '📌 Pin Node'}</button>
+            <a class="btn btn-xs" href="./eclectic-lab.html?tab=arithmetic&seed=${a.id}">± Arithmetic</a>
+            <button type="button" class="btn btn-xs" id="insFullModalBtn">Full Dossier</button>
+          </div>
+
+          ${(() => {
+            const cleanSyn = AF.stripHtml(a.description || '').trim() || 'No dossier summary available.';
+            const longSyn = cleanSyn.length > 220;
+            return `
+              <p id="insSynopsis" class="${longSyn ? 'synopsis-clamped' : ''}" style="margin:0;font-size:12.5px;color:#cbd5e1;line-height:1.55;white-space:pre-line;">
+                ${AF.escapeHtml(cleanSyn)}
+              </p>
+              ${longSyn ? `<button type="button" class="synopsis-toggle" id="insSynToggle">Read full dossier summary ▾</button>` : ''}
+            `;
+          })()}
+
+          ${node.wikiText ? `
+            <div class="detail-section" style="padding:10px;">
+              <h4 style="margin-bottom:4px;">Wikipedia Case Profile Attached</h4>
+              <div style="font-size:11.5px;color:#cbd5e1;max-height:85px;overflow-y:auto;">${AF.escapeHtml(node.wikiText)}</div>
+            </div>
+          ` : ''}
+
+          <!-- Inline Case File Editor (Instant Auto-Save) -->
+          <div class="detail-section" style="padding:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;">
+              <h4 style="margin:0;">Inline Case File Editor</h4>
+              <span id="insAutosaveBadge" class="badge badge-muted" style="font-size:10.5px;">Auto-saves</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+              <div class="form-field">
+                <label for="insWlStatus">Dossier Status</label>
+                <select id="insWlStatus" class="select">
+                  ${AF.WATCHLIST_STATUSES.map(st => `<option value="${st}" ${(wl?.status || 'Case Backlog') === st ? 'selected' : ''}>${st}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="insWlRating">Case Rating</label>
+                <select id="insWlRating" class="select">
+                  <option value="0">Unrated</option>
+                  ${[10,9,8,7,6,5,4,3,2,1].map(r => `<option value="${r}" ${Number(wl?.rating) === r ? 'selected' : ''}>${r}/10</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+              <label for="insWlProg" style="font-size:11.5px;color:var(--text-muted);">Eps:</label>
+              <input id="insWlProg" type="number" min="0" max="${a.episodes || 9999}" class="input" style="width:76px;padding:5px 8px;" value="${wl?.progress || 0}">
+              <span style="font-size:11.5px;color:var(--text-dim);">/ ${a.episodes || '?'}</span>
+            </div>
+            <textarea id="insWlNotes" class="textarea" style="min-height:54px;margin-bottom:8px;" placeholder="Investigator case notes...">${AF.escapeHtml(wl?.notes || '')}</textarea>
+            <div class="meta-row">
+              <button type="button" class="btn btn-emerald btn-xs" id="insWlSaveBtn">${isInWatchlist ? 'Save Changes' : '+ Save to Case Files'}</button>
+              ${isInWatchlist ? `<button type="button" class="btn btn-danger btn-xs" id="insWlRemoveBtn">Remove</button>` : ''}
+            </div>
+          </div>
+
+          <div class="detail-section" style="padding:12px;">
+            <h4 style="margin-bottom:8px;">Top Connected Cases in Graph</h4>
+            ${neighbors.length ? neighbors.map(nb => `
+              <div class="ins-neighbor" data-id="${nb.other.id}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+                <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${AF.escapeHtml(AF.getDisplayTitle(nb.other.anime))}</span>
+                <span class="badge badge-cyan">${Math.round(nb.weight * 100)}%</span>
+              </div>
+            `).join('') : `<div style="font-size:12px;color:var(--text-dim);">No strong edges under current threshold.</div>`}
+          </div>
+        `;
+
+        const insSynToggle = host.querySelector('#insSynToggle');
+        if (insSynToggle) {
+          insSynToggle.addEventListener('click', () => {
+            const p = host.querySelector('#insSynopsis');
+            const clamped = p.classList.toggle('synopsis-clamped');
+            insSynToggle.textContent = clamped ? 'Read full dossier summary ▾' : 'Show less ▴';
+          });
+        }
+
+        host.querySelector('#insExpandBtn').addEventListener('click', () => expandNodeNeighbors(node));
+        host.querySelector('#insPinBtn').addEventListener('click', () => {
+          node.pinned = !node.pinned;
+          renderInspector(node.id);
+          requestDraw();
+        });
+        host.querySelector('#insFullModalBtn').addEventListener('click', () => AF.openDetailModal(a));
+
+        host.querySelector('#insWikiBtn').addEventListener('click', async (ev) => {
+          const btn = ev.currentTarget;
+          btn.disabled = true;
+          btn.textContent = 'Fetching Wiki...';
+          const wiki = await AF.fetchWikipediaSummary(title);
+          btn.disabled = false;
+          btn.textContent = '📖 Attach Wikipedia';
+          if (!wiki?.extract) {
+            AF.toast('No English Wikipedia summary found for this case.', 'warn');
+            return;
+          }
+          node.wikiText = wiki.extract;
+          AF.toast('Attached Wikipedia case summary & updated semantic similarity!', 'success');
+          if (neuralEnabled && neuralExtractor) await embedVisibleNodes();
+          else recomputeGraphSimilarity();
+          renderInspector(node.id);
+        });
+
+        let insAutoSaveTimer = null;
+        const persistInspectorWatchlist = (showToast = false) => {
+          if (insAutoSaveTimer) {
+            clearTimeout(insAutoSaveTimer);
+            insAutoSaveTimer = null;
+          }
+          if (!host.querySelector('#insWlStatus')) return;
+          AF.upsertWatchlistItem(a, {
+            status: host.querySelector('#insWlStatus').value,
+            rating: Number(host.querySelector('#insWlRating').value) || 0,
+            progress: Number(host.querySelector('#insWlProg').value) || 0,
+            notes: host.querySelector('#insWlNotes').value
+          });
+          const badge = host.querySelector('#insAutosaveBadge');
+          if (badge) {
+            badge.className = 'badge badge-emerald';
+            badge.textContent = '✓ Saved';
+          }
+          if (showToast) {
+            AF.toast(`Saved "${title}" to Case Files!`, 'success', 2000);
+            renderInspector(node.id);
+          }
+          requestDraw();
+        };
+
+        const scheduleInsAutoSave = (immediate = false) => {
+          if (immediate) {
+            persistInspectorWatchlist(false);
+            return;
+          }
+          const badge = host.querySelector('#insAutosaveBadge');
+          if (badge) {
+            badge.className = 'badge badge-cyan';
+            badge.textContent = 'Saving...';
+          }
+          if (insAutoSaveTimer) clearTimeout(insAutoSaveTimer);
+          insAutoSaveTimer = setTimeout(() => persistInspectorWatchlist(false), 250);
+        };
+
+        host.querySelector('#insWlStatus')?.addEventListener('change', () => scheduleInsAutoSave(true));
+        host.querySelector('#insWlRating')?.addEventListener('change', () => scheduleInsAutoSave(true));
+        host.querySelector('#insWlProg')?.addEventListener('input', () => scheduleInsAutoSave(false));
+        host.querySelector('#insWlProg')?.addEventListener('change', () => scheduleInsAutoSave(true));
+        host.querySelector('#insWlNotes')?.addEventListener('input', () => scheduleInsAutoSave(false));
+        host.querySelector('#insWlNotes')?.addEventListener('blur', () => { if (insAutoSaveTimer) persistInspectorWatchlist(false); });
+
+        host.querySelector('#insWlSaveBtn').addEventListener('click', () => {
+          persistInspectorWatchlist(true);
+        });
+
+        const remBtn = host.querySelector('#insWlRemoveBtn');
+        if (remBtn) {
+          remBtn.addEventListener('click', () => {
+            if (insAutoSaveTimer) clearTimeout(insAutoSaveTimer);
+            AF.removeWatchlistItem(a.id);
+            AF.toast(`Removed "${title}" from Case Files.`, 'warn', 2000);
+            renderInspector(node.id);
+            requestDraw();
+          });
+        }
+
+        host.querySelectorAll('.ins-neighbor').forEach(row => {
+          row.addEventListener('click', () => {
+            selectedId = Number(row.dataset.id);
+            renderInspector(selectedId);
+            requestDraw();
+          });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // Accessible Node Table View
+      // ----------------------------------------------------------------------
+      function renderNodeTable() {
+        const tbody = document.getElementById('nodeTableBody');
+        if (!tbody) return;
+        const vis = getVisibleNodes();
+        const wl = AF.getState().watchlist || {};
+
+        tbody.innerHTML = vis.map(n => {
+          const a = n.anime;
+          const saved = wl[a.id];
+          const topEdge = edges
+            .filter(e => e.a.id === n.id || e.b.id === n.id)
+            .sort((x, y) => y.weight - x.weight)[0];
+          return `
+            <tr data-id="${n.id}" tabindex="0" style="${n.id === selectedId ? 'background:rgba(245,158,11,0.14);' : ''}">
+              <td><strong>${AF.escapeHtml(AF.getDisplayTitle(a))}</strong> ${n.isSeed ? '<span class="badge badge-accent">Seed</span>' : ''}</td>
+              <td><span class="badge badge-muted">${AF.escapeHtml(n.cluster)}</span></td>
+              <td>${a.averageScore ? a.averageScore + '%' : '—'}</td>
+              <td>${AF.formatCompactNumber(a.popularity)}</td>
+              <td>${saved ? `<span class="badge badge-emerald">${AF.escapeHtml(saved.status)}</span>` : AF.escapeHtml(AF.classifyDub(a))}</td>
+              <td>${topEdge ? Math.round(topEdge.weight * 100) + '% peak' : '—'}</td>
+            </tr>
+          `;
+        }).join('');
+
+        tbody.querySelectorAll('tr').forEach(tr => {
+          const selectRow = () => {
+            selectedId = Number(tr.dataset.id);
+            renderInspector(selectedId);
+            renderNodeTable();
+            requestDraw();
+          };
+          tr.addEventListener('click', selectRow);
+          tr.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              selectRow();
+            }
+          });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // High-DPI HTML5 Canvas Physics & Rendering
+      // ----------------------------------------------------------------------
+      function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(300, Math.floor(rect.width * dpr));
+        canvas.height = Math.max(260, Math.floor(rect.height * dpr));
+      }
+
+      function fitToView() {
+        const vis = getVisibleNodes();
+        if (!vis.length) { cam = { x: 0, y: 0, zoom: 1 }; return; }
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const n of vis) {
+          if (n.x < minX) minX = n.x; if (n.x > maxX) maxX = n.x;
+          if (n.y < minY) minY = n.y; if (n.y > maxY) maxY = n.y;
+        }
+        cam.x = (minX + maxX) / 2;
+        cam.y = (minY + maxY) / 2;
+        const rect = canvas.getBoundingClientRect();
+        const spanX = Math.max(240, maxX - minX + 160);
+        const spanY = Math.max(200, maxY - minY + 160);
+        cam.zoom = Math.max(0.42, Math.min(1.35, Math.min(rect.width / spanX, rect.height / spanY)));
+      }
+
+      function screenToWorld(sx, sy) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        return {
+          x: (sx - cx) / cam.zoom + cam.x,
+          y: (sy - cy) / cam.zoom + cam.y
+        };
+      }
+
+      function stepForcePhysics(vis) {
+        if (layoutMode !== 'force' || simAlpha < 0.01) return false;
+        const N = vis.length;
+        for (let i = 0; i < N; i++) {
+          const a = vis[i];
+          if (a.pinned) continue;
+          a.vx -= a.x * 0.0025 * simAlpha;
+          a.vy -= a.y * 0.0025 * simAlpha;
+
+          for (let j = i + 1; j < N; j++) {
+            const b = vis[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let distSq = dx * dx + dy * dy;
+            if (distSq < 1) { dx = (Math.random() - 0.5); dy = (Math.random() - 0.5); distSq = 1; }
+            const dist = Math.sqrt(distSq);
+            const minDist = 105;
+            if (dist < 380) {
+              const rep = ((minDist * minDist) / distSq) * 1.45 * simAlpha;
+              const fx = (dx / dist) * rep;
+              const fy = (dy / dist) * rep;
+              if (!a.pinned) { a.vx -= fx; a.vy -= fy; }
+              if (!b.pinned) { b.vx += fx; b.vy += fy; }
+            }
+          }
+        }
+
+        for (const e of edges) {
+          const a = e.a, b = e.b;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const target = Math.max(95, 220 - e.weight * 120);
+          const force = (dist - target) * 0.032 * (0.4 + e.weight) * simAlpha;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          if (!a.pinned) { a.vx += fx; a.vy += fy; }
+          if (!b.pinned) { b.vx -= fx; b.vy -= fy; }
+        }
+
+        for (const n of vis) {
+          if (n.pinned) continue;
+          n.vx *= 0.8;
+          n.vy *= 0.8;
+          n.x += n.vx;
+          n.y += n.vy;
+        }
+        simAlpha *= 0.96;
+        return simAlpha >= 0.01;
+      }
+
+      function drawGraph() {
+        animHandle = null;
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
+        const vis = getVisibleNodes();
+        const keepRunning = stepForcePhysics(vis);
+
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(cam.zoom, cam.zoom);
+        ctx.translate(-cam.x, -cam.y);
+
+        // 1. Emergent Cluster Radial Halos
+        for (const cl of clusters) {
+          const activeMembers = cl.members.filter(m => vis.includes(m));
+          if (activeMembers.length < 2) continue;
+          let cx = 0, cy = 0;
+          activeMembers.forEach(m => { cx += m.x; cy += m.y; });
+          cx /= activeMembers.length;
+          cy /= activeMembers.length;
+          let maxR = 60;
+          activeMembers.forEach(m => {
+            const d = Math.hypot(m.x - cx, m.y - cy) + 46;
+            if (d > maxR) maxR = d;
+          });
+          const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.min(maxR, 260));
+          grad.addColorStop(0, cl.color + '24');
+          grad.addColorStop(1, cl.color + '00');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, Math.min(maxR, 260), 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = cl.color + 'bb';
+          ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(cl.label.toUpperCase(), cx, cy - Math.min(maxR, 240) + 14);
+        }
+
+        // 2. Edges
+        for (const e of edges) {
+          const isFocus = selectedId && (e.a.id === selectedId || e.b.id === selectedId);
+          ctx.strokeStyle = isFocus ? 'rgba(245, 158, 11, 0.78)' : `rgba(148, 163, 184, ${Math.min(0.45, 0.1 + e.weight * 0.45)})`;
+          ctx.lineWidth = isFocus ? 2.5 : (1 + e.weight * 2);
+          ctx.beginPath();
+          ctx.moveTo(e.a.x, e.a.y);
+          ctx.lineTo(e.b.x, e.b.y);
+          ctx.stroke();
+        }
+
+        // 3. Nodes
+        const wl = AF.getState().watchlist || {};
+        for (const n of vis) {
+          const isSel = n.id === selectedId;
+          const isHov = n.id === hoveredId;
+          const inWl = Boolean(wl[n.id]);
+          const isGem = (n.anime.popularity || 999999) < 55000;
+          const r = n.isSeed ? 30 : 24;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          if (n.img && n.img.complete && n.img.naturalWidth > 0) {
+            ctx.drawImage(n.img, n.x - r, n.y - r, r * 2, r * 2);
+          } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+          }
+          ctx.restore();
+
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r + 2, 0, Math.PI * 2);
+          ctx.lineWidth = isSel || isHov ? 3.5 : 2.2;
+          ctx.strokeStyle = isSel
+            ? '#38bdf8'
+            : inWl
+              ? '#34d399'
+              : n.isSeed
+                ? '#f59e0b'
+                : isGem
+                  ? '#f43f5e'
+                  : 'rgba(226, 232, 240, 0.45)';
+          ctx.stroke();
+
+          if (n.pinned) {
+            ctx.fillStyle = '#f43f5e';
+            ctx.beginPath();
+            ctx.arc(n.x + r * 0.7, n.y - r * 0.7, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          const title = AF.getDisplayTitle(n.anime);
+          const short = title.length > 22 ? title.slice(0, 20) + '…' : title;
+          ctx.font = (isSel || n.isSeed ? '700' : '600') + ' 11px ui-sans-serif, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(8, 11, 18, 0.88)';
+          const tw = ctx.measureText(short).width + 10;
+          ctx.fillRect(n.x - tw / 2, n.y + r + 5, tw, 16);
+          ctx.fillStyle = isSel ? '#7dd3fc' : '#f1f5f9';
+          ctx.fillText(short, n.x, n.y + r + 16.5);
+        }
+
+        ctx.restore();
+        if (keepRunning) requestDraw();
+      }
+
+      function requestDraw() {
+        if (!animHandle) {
+          animHandle = requestAnimationFrame(drawGraph);
+        }
+      }
+
+      function findNodeAtScreen(sx, sy) {
+        const w = screenToWorld(sx, sy);
+        const vis = getVisibleNodes();
+        for (let i = vis.length - 1; i >= 0; i--) {
+          const n = vis[i];
+          const r = (n.isSeed ? 30 : 24) + 4;
+          if (Math.hypot(w.x - n.x, w.y - n.y) <= r) return n;
+        }
+        return null;
+      }
+
+      canvas.addEventListener('pointerdown', (ev) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = ev.clientX - rect.left;
+        const sy = ev.clientY - rect.top;
+        const hit = findNodeAtScreen(sx, sy);
+        canvas.setPointerCapture(ev.pointerId);
+        if (hit) {
+          dragState = { mode: 'node', node: hit, startX: sx, startY: sy, moved: false };
+          selectedId = hit.id;
+          renderInspector(selectedId);
+          requestDraw();
+        } else {
+          dragState = { mode: 'pan', startX: sx, startY: sy, camX: cam.x, camY: cam.y, moved: false };
+        }
+      });
+
+      canvas.addEventListener('pointermove', (ev) => {
+        const rect = canvas.getBoundingClientRect();
+        const sx = ev.clientX - rect.left;
+        const sy = ev.clientY - rect.top;
+        if (!dragState) {
+          const hit = findNodeAtScreen(sx, sy);
+          const nextHov = hit ? hit.id : null;
+          if (nextHov !== hoveredId) {
+            hoveredId = nextHov;
+            canvas.style.cursor = hoveredId ? 'pointer' : 'grab';
+            requestDraw();
+          }
+          return;
+        }
+        const dx = sx - dragState.startX;
+        const dy = sy - dragState.startY;
+        if (Math.hypot(dx, dy) > 3) dragState.moved = true;
+
+        if (dragState.mode === 'pan') {
+          cam.x = dragState.camX - dx / cam.zoom;
+          cam.y = dragState.camY - dy / cam.zoom;
+          requestDraw();
+        } else if (dragState.mode === 'node') {
+          const w = screenToWorld(sx, sy);
+          dragState.node.x = w.x;
+          dragState.node.y = w.y;
+          dragState.node.pinned = true;
+          simAlpha = Math.max(simAlpha, 0.25);
+          requestDraw();
+        }
+      });
+
+      canvas.addEventListener('pointerup', () => {
+        if (dragState?.mode === 'node' && dragState.moved) {
+          renderInspector(dragState.node.id);
+        }
+        dragState = null;
+      });
+
+      canvas.addEventListener('wheel', (ev) => {
+        ev.preventDefault();
+        const factor = ev.deltaY < 0 ? 1.12 : 0.89;
+        cam.zoom = Math.max(0.28, Math.min(2.6, cam.zoom * factor));
+        requestDraw();
+      }, { passive: false });
+
+      document.getElementById('runVibeBtn').addEventListener('click', () => {
+        runVibeSearch(document.getElementById('vibePromptInput').value);
+      });
+      document.getElementById('vibePromptInput').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') runVibeSearch(ev.target.value);
+      });
+
+      document.querySelectorAll('.vibe-chip').forEach(btn => {
+        btn.addEventListener('click', () => runVibeSearch(btn.dataset.vibe));
+      });
+
+      const seedInput = document.getElementById('seedSearchInput');
+      const seedDropdown = document.getElementById('seedDropdown');
+      let seedTimer = null;
+
+      seedInput.addEventListener('input', () => {
+        const q = seedInput.value.trim();
+        if (seedTimer) clearTimeout(seedTimer);
+        if (q.length < 2) { seedDropdown.classList.remove('open'); return; }
+        seedTimer = setTimeout(async () => {
+          const results = await AF.searchAnimeQuick(q, 6);
+          if (!results.length) { seedDropdown.classList.remove('open'); return; }
+          seedDropdown.innerHTML = results.map(m => `
+            <div class="search-item" data-id="${m.id}">
+              <img src="${AF.escapeHtml(AF.getCover(m))}" alt="">
+              <div style="min-width:0;">
+                <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${AF.escapeHtml(AF.getDisplayTitle(m))}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${m.seasonYear || ''} · ${AF.escapeHtml(m.format || '')}</div>
+              </div>
+            </div>
+          `).join('');
+          seedDropdown.classList.add('open');
+          seedDropdown.querySelectorAll('.search-item').forEach(row => {
+            row.addEventListener('click', () => {
+              seedDropdown.classList.remove('open');
+              seedInput.value = '';
+              seedByAnimeId(Number(row.dataset.id));
+            });
+          });
+        }, 300);
+      });
+
+      document.getElementById('seedWatchlistBtn').addEventListener('click', seedByWatchlist);
+
+      document.getElementById('layoutForceBtn').addEventListener('click', () => {
+        layoutMode = 'force';
+        document.getElementById('layoutForceBtn').classList.add('active');
+        document.getElementById('layoutTsneBtn').classList.remove('active');
+        simAlpha = 0.9;
+        requestDraw();
+      });
+
+      document.getElementById('layoutTsneBtn').addEventListener('click', () => {
+        layoutMode = 'tsne';
+        document.getElementById('layoutTsneBtn').classList.add('active');
+        document.getElementById('layoutForceBtn').classList.remove('active');
+        recomputeGraphSimilarity();
+        requestDraw();
+      });
+
+      document.querySelectorAll('.gem-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          gemCeiling = Number(btn.dataset.gem) || 0;
+          document.querySelectorAll('.gem-btn').forEach(b => b.classList.toggle('active', b === btn));
+          if (lastVibePrompt) {
+            runVibeSearch(lastVibePrompt);
+          } else {
+            recomputeGraphSimilarity();
+            fitToView();
+            requestDraw();
+          }
+        });
+      });
+
+      document.getElementById('fitViewBtn').addEventListener('click', () => { fitToView(); requestDraw(); });
+      document.getElementById('unpinAllBtn').addEventListener('click', () => {
+        nodes.forEach(n => { n.pinned = false; });
+        simAlpha = 0.7;
+        if (selectedId) renderInspector(selectedId);
+        requestDraw();
+      });
+
+      document.getElementById('toggleTableBtn').addEventListener('click', (ev) => {
+        const wrap = document.getElementById('nodeTableWrap');
+        const open = !wrap.classList.contains('open');
+        wrap.classList.toggle('open', open);
+        ev.currentTarget.setAttribute('aria-pressed', String(open));
+        ev.currentTarget.classList.toggle('btn-primary', open);
+        if (open) renderNodeTable();
+      });
+
+      AF.onStateChange(() => {
+        const activeId = document.activeElement?.id || '';
+        const isEditingInspector = ['insWlStatus', 'insWlRating', 'insWlProg', 'insWlNotes'].includes(activeId);
+        if (selectedId && !isEditingInspector) renderInspector(selectedId);
+        renderNodeTable();
+        requestDraw();
+      });
+
+      window.addEventListener('resize', () => { resizeCanvas(); requestDraw(); });
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => { resizeCanvas(); requestDraw(); }).observe(canvas.parentElement);
+      }
+      resizeCanvas();
+      requestDraw();
+
+      const params = new URLSearchParams(window.location.search);
+      const deepSeed = Number(params.get('seed'));
+      const deepVibe = params.get('vibe');
+      const deepMode = params.get('mode');
+      if (deepSeed) {
+        seedByAnimeId(deepSeed);
+      } else if (deepVibe) {
+        runVibeSearch(deepVibe);
+      } else if (deepMode === 'watchlist') {
+        seedByWatchlist();
+      } else {
+        runVibeSearch('forensic genealogy cold case');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="referrer" content="no-referrer-when-downgrade">
+  <title>TrueCrimeFinder — Forensic Discovery Lab</title>
+  <meta name="description" content="Experimental true crime discovery tools: 2D Crime Vibe Map, Director & Investigator Tree, Case Attribute Arithmetic, and Classified Case File Roulette.">
+  <meta name="theme-color" content="#080b12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TrueCrimeFinder">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="af-nav-host"></div>
+
+  <main class="container">
+    <!-- Segmented Forensic Lab Tab Bar -->
+    <div class="tabs-bar" role="tablist" aria-label="Forensic Lab Modules">
+      <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="vibe-map">🧭 2D Crime Vibe Map</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="auteur">🎬 Director &amp; Investigator Tree</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="arithmetic">🧮 Case Attribute Arithmetic</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="roulette">📁 Classified Case File Roulette</button>
+    </div>
+
+    <!-- MODULE 1: 2D CRIME VIBE MAP -->
+    <section id="lab-vibe-map" class="tab-panel" role="tabpanel">
+      <div class="vibe-map-layout">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">2D Forensic Quadrant Plane</h2>
+            <div class="pills-row">
+              <button type="button" class="pill active axis-btn" data-axis="tone-reality">Method × Focus</button>
+              <button type="button" class="pill axis-btn" data-axis="pacing-obscurity">Pacing × Profile</button>
+            </div>
+          </div>
+
+          <!-- Draggable & Keyboard-Nudgeable Quadrant Plane (P1 A11y) -->
+          <div
+            id="quadrantPlane"
+            class="quadrant-plane"
+            tabindex="0"
+            role="application"
+            aria-label="2D Crime Vibe Map Quadrant Plane. Use arrow keys to nudge coordinates, Shift plus arrows for fine adjustments, and Enter to search."
+          >
+            <div class="quadrant-axis-x"></div>
+            <div class="quadrant-axis-y"></div>
+            <span class="quadrant-label top" id="qLblTop">Systemic / Legal</span>
+            <span class="quadrant-label bottom" id="qLblBottom">Whodunit / Mystery</span>
+            <span class="quadrant-label left" id="qLblLeft">Clinical / Forensic</span>
+            <span class="quadrant-label right" id="qLblRight">Character / Cult</span>
+            <div id="quadrantReticle" class="quadrant-reticle" style="left:50%;top:50%;"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px;flex-wrap:wrap;">
+            <div id="vibeCoordsReadout" aria-live="polite" style="font-family:var(--font-mono);font-size:12px;color:var(--amber);">
+              x: 0.00 · y: 0.00
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="searchQuadrantBtn">Rank Top 12 Case Matches</button>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-dim);margin-top:6px;">
+            Tip: Drag the reticle or focus the plane and nudge with <span class="kbd">←</span><span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">→</span> (<span class="kbd">Shift</span> for fine steps, <span class="kbd">Enter</span> to query).
+          </div>
+          <div id="quadrantSignals" class="pills-row" style="margin-top:10px;"></div>
+        </div>
+
+        <div>
+          <div id="vibeMapMeta" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">Move the reticle to rank up to 12 true crime dossiers by forensic vector alignment.</div>
+          <div id="vibeMapGrid" class="anime-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 2: DIRECTOR & INVESTIGATOR TREE -->
+    <section id="lab-auteur" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Director, Journalist &amp; Investigator Tree</h2>
+            <div style="font-size:12px;color:var(--text-muted);">Explore true crime documentarians, investigative podcast hosts, and homicide detectives across 5 craft buckets.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;position:relative;">
+          <div style="position:relative;flex:1;min-width:220px;">
+            <input id="staffSearchInput" type="search" class="input input-full" placeholder="Search any documentarian, podcast journalist, or investigator..." autocomplete="off">
+            <div id="staffDropdown" class="search-dropdown" role="listbox"></div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="searchStaffBtn">Inspect Investigator</button>
+        </div>
+        <div class="pills-row" id="curatedAuteursBar"></div>
+      </div>
+
+      <div id="auteurHeader" class="panel" hidden style="margin-bottom:14px;"></div>
+      <div id="auteurBucketsBar" class="pills-row sticky-subbar" style="margin-bottom:14px;"></div>
+      <div id="auteurGrid" class="anime-grid"></div>
+    </section>
+
+    <!-- MODULE 3: CASE ATTRIBUTE ARITHMETIC -->
+    <section id="lab-arithmetic" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Case Attribute Arithmetic (Signed Forensic Equations)</h2>
+            <div style="font-size:12px;color:var(--text-muted);">
+              Combine true crime cases, forensic tags, and categories with <strong>+</strong> / <strong>−</strong> polarity. Click any term's sign to flip it.
+            </div>
+          </div>
+          <div class="meta-row">
+            <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer;">
+              <input type="checkbox" id="arithEntryPointsOnly" checked> Standalone Entry Points Only
+            </label>
+            <button type="button" class="btn btn-sm" id="resetDefaultEqBtn">Preset: The Jinx + Forensic Files − Cult</button>
+            <button type="button" class="btn btn-primary btn-sm" id="solveEquationBtn">= Solve Case Equation</button>
+          </div>
+        </div>
+
+        <!-- Equation Bar -->
+        <div id="equationBar" class="equation-bar" aria-label="Active forensic equation"></div>
+
+        <!-- Add Terms Controls -->
+        <div class="grid-3" style="margin-top:14px;">
+          <div style="position:relative;">
+            <label for="eqAddAnime" style="font-size:11.5px;color:var(--text-muted);display:block;margin-bottom:4px;">+ Add Case / Show Term</label>
+            <input id="eqAddAnime" type="search" class="input input-full" placeholder="Search case (e.g. Making a Murderer, Bear Brook)..." autocomplete="off">
+            <div id="eqAnimeDropdown" class="search-dropdown"></div>
+          </div>
+          <div>
+            <label for="eqAddGenre" style="font-size:11.5px;color:var(--text-muted);display:block;margin-bottom:4px;">+ / − Add Category Term</label>
+            <div style="display:flex;gap:6px;">
+              <select id="eqAddGenre" class="select" style="flex:1;"></select>
+              <button type="button" class="btn btn-emerald btn-sm" id="eqAddGenrePlus">+</button>
+              <button type="button" class="btn btn-danger btn-sm" id="eqAddGenreMinus">−</button>
+            </div>
+          </div>
+          <div>
+            <label for="eqAddTag" style="font-size:11.5px;color:var(--text-muted);display:block;margin-bottom:4px;">+ / − Add Forensic Tag</label>
+            <div style="display:flex;gap:6px;">
+              <input id="eqAddTag" list="eqTagDatalist" class="input input-full" placeholder="e.g. Forensic Genealogy, Cold Case...">
+              <datalist id="eqTagDatalist"></datalist>
+              <button type="button" class="btn btn-emerald btn-sm" id="eqAddTagPlus">+</button>
+              <button type="button" class="btn btn-danger btn-sm" id="eqAddTagMinus">−</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sticky Synthesized DNA Preview -->
+      <div id="synthesizedDna" class="sticky-subbar" style="margin-bottom:14px;font-size:12px;color:var(--text-muted);" hidden></div>
+
+      <div id="arithmeticGrid" class="anime-grid"></div>
+    </section>
+
+    <!-- MODULE 4: CLASSIFIED CASE FILE ROULETTE -->
+    <section id="lab-roulette" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div>
+            <h2 class="panel-title">Classified Case File Roulette</h2>
+            <div style="font-size:12px;color:var(--text-muted);">Case names and title tokens are stripped into <code>[REDACTED]</code> and poster art is sealed until declassification — evaluate cases purely on investigative premise.</div>
+          </div>
+          <div class="meta-row">
+            <select id="roulettePopSelect" class="select" aria-label="Profile ceiling">
+              <option value="75000">Deep Cuts (&lt;75k reach)</option>
+              <option value="140000" selected>Under-Seen Cases (&lt;140k reach)</option>
+              <option value="0">All Cases</option>
+            </select>
+            <select id="rouletteGenreSelect" class="select" aria-label="Optional category filter">
+              <option value="">Any Category</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" id="rollRouletteBtn">🎲 Draw Classified Dossier</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="rouletteStage"></div>
+    </section>
+  </main>
+
+  <script src="./shared-core.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const AF = window.TrueCrimeFinderCore;
+      AF.mountNav('lab');
+
+      let activeTab = 'vibe-map';
+      let taxonomy = null;
+      const loadedTabs = new Set();
+
+      function switchTab(tabName) {
+        activeTab = tabName;
+        document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => {
+          const isAct = btn.dataset.tab === tabName;
+          btn.classList.toggle('active', isAct);
+          btn.setAttribute('aria-selected', String(isAct));
+        });
+        document.querySelectorAll('.tab-panel').forEach(sec => {
+          sec.hidden = sec.id !== `lab-${tabName}`;
+        });
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tabName);
+        history.replaceState(null, '', url.toString());
+
+        if (!loadedTabs.has(tabName)) {
+          loadedTabs.add(tabName);
+          if (tabName === 'vibe-map') runQuadrantQuery();
+          if (tabName === 'auteur') loadAuteur('Joe Berlinger');
+          if (tabName === 'arithmetic') initArithmetic();
+          if (tabName === 'roulette') rollRoulette();
+        }
+      }
+
+      document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      function renderLabCard(media, badgeHtml = '') {
+        const wl = AF.getState().watchlist[media.id];
+        const title = AF.getDisplayTitle(media);
+        const leadStudio = media.studios?.nodes?.[0]?.name || '';
+        const subTags = AF.getTopSubgenreTags(media, 2);
+        const caseSt = AF.classifyDub(media);
+        return `
+          <article class="anime-card" tabindex="0" data-id="${media.id}">
+            <div class="anime-card-cover-wrap">
+              <img class="anime-card-cover" src="${AF.escapeHtml(AF.getCover(media))}" alt="${AF.escapeHtml(title)}" loading="lazy">
+              <div class="anime-card-overlay-top">
+                <div>${badgeHtml} ${wl ? `<span class="badge badge-emerald">${AF.escapeHtml(wl.status)}</span>` : ''}</div>
+                ${media.averageScore ? `<span class="badge badge-accent">★ ${media.averageScore}%</span>` : ''}
+              </div>
+              <div class="anime-card-overlay-bottom">
+                <span class="badge badge-amber">${AF.escapeHtml(caseSt)}</span>
+                <span class="badge badge-muted">Reach ${AF.formatCompactNumber(media.popularity)}</span>
+                ${media.seasonYear ? `<span class="badge badge-muted">${media.seasonYear}</span>` : ''}
+              </div>
+              <button type="button" class="quick-wl-btn ${wl ? 'saved' : ''}" data-quick-wl="${media.id}" title="${wl ? 'Saved in Case Files (click to edit)' : 'Quick-add to Case Backlog'}">${wl ? '✓ Saved' : '+ Case File'}</button>
+            </div>
+            <div class="anime-card-body">
+              <h3 class="anime-card-title">${AF.escapeHtml(title)}</h3>
+              <div class="anime-card-meta">
+                ${leadStudio
+                  ? `<a href="./index.html?tab=archives&amp;studio=${encodeURIComponent(leadStudio)}" onclick="event.stopPropagation();" style="color:var(--cyan);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${AF.escapeHtml(leadStudio)}</a>`
+                  : `<span>${AF.escapeHtml((media.genres || []).slice(0, 2).join(', ') || media.format || 'Dossier')}</span>`}
+                <a href="./vibe-graph.html?seed=${media.id}" onclick="event.stopPropagation();" style="font-size:11px;flex-shrink:0;">Graph ↗</a>
+              </div>
+              ${subTags.length ? `<div style="font-size:10.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subTags.map(t => '#' + AF.escapeHtml(t)).join(' · ')}</div>` : ''}
+            </div>
+          </article>
+        `;
+      }
+
+      function wireCards(container, list) {
+        const byId = new Map(list.map(m => [m.id, m]));
+        container.querySelectorAll('.anime-card').forEach(card => {
+          const open = () => AF.openDetailModal(byId.get(Number(card.dataset.id)) || Number(card.dataset.id));
+          card.addEventListener('click', (ev) => { if (!ev.target.closest('a,button')) open(); });
+          card.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
+        });
+        container.querySelectorAll('[data-quick-wl]').forEach(btn => {
+          btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const id = Number(btn.dataset.quickWl);
+            const item = byId.get(id);
+            const existing = AF.getState().watchlist[id];
+            if (existing) {
+              AF.openDetailModal(item || id);
+            } else if (item) {
+              AF.upsertWatchlistItem(item, { status: 'Case Backlog' });
+              btn.classList.add('saved');
+              btn.textContent = '✓ Saved';
+              AF.toast(`Added "${AF.getDisplayTitle(item)}" to Case Backlog!`, 'success', 2000);
+            }
+          });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // MODULE 1: 2D CRIME VIBE MAP (Method × Focus | Pacing × Profile)
+      // ----------------------------------------------------------------------
+      const AXIS_DEFS = {
+        'tone-reality': {
+          left: 'Clinical / Forensic', right: 'Character / Cult', bottom: 'Whodunit / Mystery', top: 'Systemic / Legal',
+          mapCoords(x, y) {
+            const tags = [], genres = [], avoidTags = [], avoidGenres = [];
+            if (x <= -0.2) {
+              tags.push('Forensic DNA', 'Forensic Genealogy', 'Police Interrogation');
+              genres.push('Investigative Newsmagazine', 'Docuseries');
+              avoidTags.push('Cult & High-Control Group');
+            }
+            if (x >= 0.2) {
+              tags.push('Cult & High-Control Group', 'Con Artist & Impostor', 'Psychological Profile');
+              genres.push('Cult & Extremism', 'Fraud & White-Collar');
+            }
+            if (y <= -0.2) {
+              tags.push('Cold Case', 'Unsolved Mystery', 'Missing Persons', 'Small-Town Mystery');
+              genres.push('Docuseries', 'True Crime Podcast');
+            }
+            if (y >= 0.2) {
+              tags.push('Wrongful Conviction', 'Courtroom & Legal', 'Judicial & Police Corruption', 'Whistleblower');
+              genres.push('Legal & Exoneration', 'Feature Documentary');
+            }
+            if (!tags.length && !genres.length) {
+              tags.push('Investigative Journalism', 'Archival Footage');
+              genres.push('Docuseries');
+            }
+            return { tags, genres, avoidTags, avoidGenres, maxPopularity: null, minPopularity: null };
+          }
+        },
+        'pacing-obscurity': {
+          left: 'Slow-Burn Deep Dive', right: 'Fast Procedural', bottom: 'High-Profile Case', top: 'Under-the-Radar Cold Case',
+          mapCoords(x, y) {
+            const tags = [], genres = [], avoidTags = [], avoidGenres = [];
+            if (x <= -0.2) {
+              tags.push('Investigative Journalism', 'Wrongful Conviction', 'Archival Footage');
+              genres.push('True Crime Podcast', 'Feature Documentary');
+            }
+            if (x >= 0.2) {
+              tags.push('Forensic DNA', 'Police Interrogation', 'Cyber & OSINT Sleuths');
+              genres.push('Investigative Newsmagazine', 'Docuseries');
+            }
+            if (!tags.length) {
+              tags.push('Cold Case', 'Courtroom & Legal');
+              genres.push('Docuseries');
+            }
+            let maxPopularity = null;
+            let minPopularity = null;
+            if (y >= 0.35) maxPopularity = y >= 0.7 ? 55000 : 95000;
+            else if (y <= -0.35) minPopularity = y <= -0.7 ? 160000 : 115000;
+            return { tags, genres, avoidTags, avoidGenres, maxPopularity, minPopularity };
+          }
+        }
+      };
+
+      let axisMode = 'tone-reality';
+      let reticleX = -0.35;
+      let reticleY = 0.45;
+      let quadrantDebounce = null;
+
+      function updateReticleUI() {
+        const def = AXIS_DEFS[axisMode];
+        document.getElementById('qLblLeft').textContent = def.left;
+        document.getElementById('qLblRight').textContent = def.right;
+        document.getElementById('qLblTop').textContent = def.top;
+        document.getElementById('qLblBottom').textContent = def.bottom;
+
+        const leftPct = ((reticleX + 1) / 2) * 100;
+        const topPct = ((1 - reticleY) / 2) * 100;
+        const ret = document.getElementById('quadrantReticle');
+        ret.style.left = leftPct + '%';
+        ret.style.top = topPct + '%';
+
+        document.getElementById('vibeCoordsReadout').textContent =
+          `${def.left}/${def.right}: ${reticleX.toFixed(2)}  ·  ${def.bottom}/${def.top}: ${reticleY.toFixed(2)}`;
+
+        const mapped = def.mapCoords(reticleX, reticleY);
+        document.getElementById('quadrantSignals').innerHTML = [
+          ...mapped.tags.map(t => `<span class="badge badge-accent">#${AF.escapeHtml(t)}</span>`),
+          ...mapped.genres.map(g => `<span class="badge badge-purple">${AF.escapeHtml(g)}</span>`),
+          mapped.maxPopularity ? `<span class="badge badge-amber">Reach &lt; ${AF.formatCompactNumber(mapped.maxPopularity)}</span>` : '',
+          mapped.minPopularity ? `<span class="badge badge-cyan">Reach &gt; ${AF.formatCompactNumber(mapped.minPopularity)}</span>` : ''
+        ].join('');
+      }
+
+      async function runQuadrantQuery() {
+        const def = AXIS_DEFS[axisMode];
+        const mapped = def.mapCoords(reticleX, reticleY);
+        const grid = document.getElementById('vibeMapGrid');
+        const meta = document.getElementById('vibeMapMeta');
+
+        let pool = [...AF.CANONICAL_DOSSIER_LIST];
+        if (mapped.maxPopularity) {
+          const sub = pool.filter(m => (m.popularity || 0) <= mapped.maxPopularity);
+          if (sub.length >= 4) pool = sub;
+        }
+        if (mapped.minPopularity) {
+          const sub = pool.filter(m => (m.popularity || 0) >= mapped.minPopularity);
+          if (sub.length >= 4) pool = sub;
+        }
+
+        const targetTags = new Set(mapped.tags.map(t => t.toLowerCase()));
+        const targetGenres = new Set(mapped.genres.map(g => g.toLowerCase()));
+        const avoidT = new Set((mapped.avoidTags || []).map(t => t.toLowerCase()));
+        const avoidG = new Set((mapped.avoidGenres || []).map(g => g.toLowerCase()));
+
+        const rawScored = pool.map(m => {
+          let align = 0;
+          let hits = 0;
+          for (const t of (m.tags || [])) {
+            const tl = t.name.toLowerCase();
+            if (targetTags.has(tl)) { align += (t.rank || 60) * 1.3; hits++; }
+            if (avoidT.has(tl)) align -= (t.rank || 60) * 1.4;
+          }
+          for (const g of (m.genres || [])) {
+            const gl = g.toLowerCase();
+            if (targetGenres.has(gl)) { align += 48; hits++; }
+            if (avoidG.has(gl)) align -= 75;
+          }
+          if (hits >= 2) align *= (1 + Math.min(4, hits) * 0.16);
+          align += (m.averageScore || 80) * 0.28;
+          return { media: m, align };
+        }).sort((a, b) => b.align - a.align).slice(0, 12);
+
+        const topAlign = rawScored[0]?.align || 1;
+        const minAlign = rawScored[rawScored.length - 1]?.align || 0;
+        const span = Math.max(25, topAlign - minAlign);
+        const scored = rawScored.map((s, idx) => {
+          const norm = (s.align - minAlign) / span;
+          const pct = Math.min(98, Math.max(64, Math.round(70 + norm * 27 - idx * 0.4)));
+          return { ...s, pct };
+        });
+
+        meta.textContent = `Top ${scored.length} forensic vector-aligned case dossiers for (${reticleX.toFixed(2)}, ${reticleY.toFixed(2)})`;
+        grid.innerHTML = scored.map(s => renderLabCard(s.media, `<span class="badge badge-cyan">${s.pct}% match</span>`)).join('');
+        wireCards(grid, scored.map(s => s.media));
+      }
+
+      const plane = document.getElementById('quadrantPlane');
+      let draggingPlane = false;
+
+      function setReticleFromPointer(ev) {
+        const rect = plane.getBoundingClientRect();
+        const nx = Math.max(-1, Math.min(1, ((ev.clientX - rect.left) / rect.width) * 2 - 1));
+        const ny = Math.max(-1, Math.min(1, 1 - ((ev.clientY - rect.top) / rect.height) * 2));
+        reticleX = nx;
+        reticleY = ny;
+        updateReticleUI();
+      }
+
+      plane.addEventListener('pointerdown', (ev) => {
+        draggingPlane = true;
+        plane.setPointerCapture(ev.pointerId);
+        setReticleFromPointer(ev);
+      });
+      plane.addEventListener('pointermove', (ev) => {
+        if (!draggingPlane) return;
+        setReticleFromPointer(ev);
+      });
+      plane.addEventListener('pointerup', () => {
+        if (!draggingPlane) return;
+        draggingPlane = false;
+        runQuadrantQuery();
+      });
+
+      plane.addEventListener('keydown', (ev) => {
+        const step = ev.shiftKey ? 0.05 : 0.15;
+        let changed = false;
+        if (ev.key === 'ArrowLeft') { reticleX = Math.max(-1, reticleX - step); changed = true; }
+        else if (ev.key === 'ArrowRight') { reticleX = Math.min(1, reticleX + step); changed = true; }
+        else if (ev.key === 'ArrowUp') { reticleY = Math.min(1, reticleY + step); changed = true; }
+        else if (ev.key === 'ArrowDown') { reticleY = Math.max(-1, reticleY - step); changed = true; }
+        else if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          runQuadrantQuery();
+          return;
+        }
+        if (changed) {
+          ev.preventDefault();
+          updateReticleUI();
+          if (quadrantDebounce) clearTimeout(quadrantDebounce);
+          quadrantDebounce = setTimeout(runQuadrantQuery, 350);
+        }
+      });
+
+      document.querySelectorAll('.axis-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          axisMode = btn.dataset.axis;
+          document.querySelectorAll('.axis-btn').forEach(b => b.classList.toggle('active', b === btn));
+          updateReticleUI();
+          runQuadrantQuery();
+        });
+      });
+      document.getElementById('searchQuadrantBtn').addEventListener('click', runQuadrantQuery);
+      updateReticleUI();
+
+      // ----------------------------------------------------------------------
+      // MODULE 2: DIRECTOR & INVESTIGATOR TREE
+      // ----------------------------------------------------------------------
+      const CURATED_AUTEURS = [
+        'Joe Berlinger',
+        'Alex Gibney',
+        'Errol Morris',
+        'Sarah Koenig',
+        'Keith Morrison',
+        'Madeleine Baran',
+        'Andrew Jarecki',
+        'Werner Herzog'
+      ];
+
+      const CRAFT_BUCKETS = [
+        'All Credits',
+        'Director / Filmmaker',
+        'Host / Journalist',
+        'Detective / Forensic',
+        'Legal / Producer',
+        'Other'
+      ];
+
+      let currentAuteurCredits = [];
+      let activeBucket = 'All Credits';
+
+      function classifyCraftRole(roleStr) {
+        const r = String(roleStr || '').toLowerCase();
+        if (/(host|journalist|correspondent|anchor|author|narrator)/.test(r)) return 'Host / Journalist';
+        if (/(detective|fbi|investigator|genealogist|sleuth)/.test(r)) return 'Detective / Forensic';
+        if (/(attorney|legal|producer|whistleblower)/.test(r)) return 'Legal / Producer';
+        if (/(director|creator|cinematography)/.test(r)) return 'Director / Filmmaker';
+        return 'Other';
+      }
+
+      document.getElementById('curatedAuteursBar').innerHTML = CURATED_AUTEURS.map(name =>
+        `<button type="button" class="pill auteur-chip" data-name="${AF.escapeHtml(name)}">${AF.escapeHtml(name)}</button>`
+      ).join('');
+      document.querySelectorAll('.auteur-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('staffSearchInput').value = btn.dataset.name;
+          loadAuteur(btn.dataset.name);
+        });
+      });
+
+      const staffInp = document.getElementById('staffSearchInput');
+      const staffDrop = document.getElementById('staffDropdown');
+      let staffTimer = null;
+      staffInp.addEventListener('input', () => {
+        const q = staffInp.value.trim();
+        if (staffTimer) clearTimeout(staffTimer);
+        if (q.length < 2) { staffDrop.classList.remove('open'); return; }
+        staffTimer = setTimeout(async () => {
+          const data = await AF.anilistQuery('query { staff(search: $search) }', { search: q });
+          const list = data?.Page?.staff || [];
+          if (!list.length) { staffDrop.classList.remove('open'); return; }
+          staffDrop.innerHTML = list.map(st => `
+            <div class="search-item" data-name="${AF.escapeHtml(st.name.full)}">
+              ${st.image?.medium ? `<img src="${AF.escapeHtml(st.image.medium)}" alt="" style="width:36px;height:48px;">` : ''}
+              <div>
+                <div style="font-weight:700;font-size:13px;">${AF.escapeHtml(st.name.full)}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${AF.escapeHtml((st.primaryOccupations || []).join(' · '))}</div>
+              </div>
+            </div>
+          `).join('');
+          staffDrop.classList.add('open');
+          staffDrop.querySelectorAll('.search-item').forEach(row => {
+            row.addEventListener('click', () => {
+              staffInp.value = row.dataset.name;
+              staffDrop.classList.remove('open');
+              loadAuteur(row.dataset.name);
+            });
+          });
+        }, 220);
+      });
+      document.addEventListener('click', (ev) => {
+        if (!ev.target.closest('#staffSearchInput') && !ev.target.closest('#staffDropdown')) staffDrop.classList.remove('open');
+      });
+
+      document.getElementById('searchStaffBtn').addEventListener('click', () => {
+        staffDrop.classList.remove('open');
+        const q = staffInp.value.trim();
+        if (q) loadAuteur(q);
+      });
+      staffInp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') {
+          staffDrop.classList.remove('open');
+          const q = ev.target.value.trim();
+          if (q) loadAuteur(q);
+        }
+      });
+
+      async function loadAuteur(name) {
+        const header = document.getElementById('auteurHeader');
+        const bucketsBar = document.getElementById('auteurBucketsBar');
+        const grid = document.getElementById('auteurGrid');
+        header.hidden = true;
+        bucketsBar.innerHTML = '';
+
+        const data = await AF.anilistQuery('query { staff(search: $search) }', { search: name });
+        const staff = data?.Page?.staff?.[0];
+        if (!staff) {
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Investigator or creator "${AF.escapeHtml(name)}" not found. Try picking one of the curated investigators above.</div>`;
+          return;
+        }
+
+        const creditMap = new Map();
+        const allEdges = [...(staff.p1?.edges || []), ...(staff.p2?.edges || [])];
+        for (const e of allEdges) {
+          const m = e?.node;
+          if (!m) continue;
+          const role = e.staffRole || 'Investigator';
+          const bucket = classifyCraftRole(role);
+          if (!creditMap.has(m.id)) {
+            creditMap.set(m.id, { media: m, roles: [role], buckets: new Set([bucket]), rolesByBucket: { [bucket]: [role] } });
+          } else {
+            const rec = creditMap.get(m.id);
+            if (!rec.roles.includes(role)) rec.roles.push(role);
+            rec.buckets.add(bucket);
+            if (!rec.rolesByBucket[bucket]) rec.rolesByBucket[bucket] = [];
+            if (!rec.rolesByBucket[bucket].includes(role)) rec.rolesByBucket[bucket].push(role);
+          }
+        }
+
+        currentAuteurCredits = Array.from(creditMap.values());
+        activeBucket = 'All Credits';
+
+        header.hidden = false;
+        header.innerHTML = `
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+            ${staff.image?.large ? `<img src="${AF.escapeHtml(staff.image.large)}" alt="${AF.escapeHtml(staff.name.full)}" style="width:68px;height:68px;object-fit:cover;border-radius:50%;border:2px solid var(--accent);">` : ''}
+            <div style="flex:1;min-width:220px;">
+              <h3 style="margin:0;font-size:17px;">${AF.escapeHtml(staff.name.full)}</h3>
+              <div style="font-size:12px;color:var(--cyan);margin-top:2px;">${AF.escapeHtml((staff.primaryOccupations || []).join(' · '))}</div>
+              <p style="margin:6px 0 0;font-size:12.5px;color:var(--text-muted);">
+                ${AF.escapeHtml(AF.stripHtml(staff.description))}
+              </p>
+            </div>
+            <span class="badge badge-accent">${currentAuteurCredits.length} Indexed Case Files</span>
+          </div>
+        `;
+        renderAuteurCredits();
+      }
+
+      function renderAuteurCredits() {
+        const bucketsBar = document.getElementById('auteurBucketsBar');
+        const grid = document.getElementById('auteurGrid');
+
+        const counts = {};
+        CRAFT_BUCKETS.forEach(b => { counts[b] = 0; });
+        counts['All Credits'] = currentAuteurCredits.length;
+        currentAuteurCredits.forEach(c => {
+          c.buckets.forEach(b => { counts[b] = (counts[b] || 0) + 1; });
+        });
+
+        bucketsBar.innerHTML = CRAFT_BUCKETS.map(b => `
+          <button type="button" class="pill ${activeBucket === b ? 'active' : ''}" data-bucket="${AF.escapeHtml(b)}">
+            ${AF.escapeHtml(b)} <span class="badge badge-muted">${counts[b] || 0}</span>
+          </button>
+        `).join('');
+        bucketsBar.querySelectorAll('.pill').forEach(btn => {
+          btn.addEventListener('click', () => {
+            activeBucket = btn.dataset.bucket;
+            renderAuteurCredits();
+          });
+        });
+
+        const filtered = activeBucket === 'All Credits'
+          ? currentAuteurCredits
+          : currentAuteurCredits.filter(c => c.buckets.has(activeBucket));
+
+        const pickRole = (c) => {
+          if (activeBucket !== 'All Credits' && c.rolesByBucket?.[activeBucket]?.length) {
+            return c.rolesByBucket[activeBucket][0];
+          }
+          return c.roles[0];
+        };
+
+        grid.innerHTML = filtered.length
+          ? filtered.map(c => renderLabCard(c.media, `<span class="badge badge-purple">${AF.escapeHtml(pickRole(c))}</span>`)).join('')
+          : `<div class="empty-state" style="grid-column:1/-1;">No case files in the "${AF.escapeHtml(activeBucket)}" bucket.</div>`;
+        wireCards(grid, filtered.map(c => c.media));
+      }
+
+      // ----------------------------------------------------------------------
+      // MODULE 3: CASE ATTRIBUTE ARITHMETIC
+      // ----------------------------------------------------------------------
+      let eqTerms = [];
+      let arithmeticInitialized = false;
+
+      async function ensureTaxonomyLoaded() {
+        if (taxonomy) return taxonomy;
+        taxonomy = await AF.getTaxonomy();
+        const gSel = document.getElementById('eqAddGenre');
+        const rSel = document.getElementById('rouletteGenreSelect');
+        gSel.innerHTML = taxonomy.genres.map(g => `<option value="${AF.escapeHtml(g)}">${AF.escapeHtml(g)}</option>`).join('');
+        rSel.innerHTML = `<option value="">Any Category</option>` + taxonomy.genres.map(g => `<option value="${AF.escapeHtml(g)}">${AF.escapeHtml(g)}</option>`).join('');
+
+        const dl = document.getElementById('eqTagDatalist');
+        dl.innerHTML = taxonomy.tags.map(t => `<option value="${AF.escapeHtml(t.name)}"></option>`).join('');
+        return taxonomy;
+      }
+
+      function renderEquationBar() {
+        const bar = document.getElementById('equationBar');
+        if (!eqTerms.length) {
+          bar.innerHTML = `<span style="color:var(--text-dim);font-size:13px;">Add case files, categories, or forensic tags below to build a signed equation...</span>`;
+          return;
+        }
+        bar.innerHTML = eqTerms.map((t, idx) => `
+          <div class="eq-term ${t.sign > 0 ? 'plus' : 'minus'}">
+            <button type="button" class="eq-sign-btn" data-idx="${idx}" title="Click to flip + / − polarity">${t.sign > 0 ? '+' : '−'}</button>
+            <span>${AF.escapeHtml(t.label)}</span>
+            <span style="font-size:10px;opacity:0.75;text-transform:uppercase;">${t.type}</span>
+            <button type="button" class="eq-remove-btn" data-idx="${idx}" aria-label="Remove ${AF.escapeHtml(t.label)}">✕</button>
+          </div>
+        `).join('');
+
+        bar.querySelectorAll('.eq-sign-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = Number(btn.dataset.idx);
+            eqTerms[idx].sign *= -1;
+            renderEquationBar();
+            solveEquation();
+          });
+        });
+        bar.querySelectorAll('.eq-remove-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            eqTerms.splice(Number(btn.dataset.idx), 1);
+            renderEquationBar();
+            solveEquation();
+          });
+        });
+      }
+
+      function synthesizeDna() {
+        const posTags = new Map();
+        const negTags = new Set();
+        const posGenres = new Map();
+        const negGenres = new Set();
+        const seedIds = new Set();
+
+        for (const term of eqTerms) {
+          if (term.type === 'anime' && term.anime) {
+            seedIds.add(term.anime.id);
+            const a = term.anime;
+            for (const g of (a.genres || [])) {
+              if (term.sign > 0) posGenres.set(g, (posGenres.get(g) || 0) + 1);
+              else negGenres.add(g);
+            }
+            for (const t of (a.tags || []).slice(0, 8)) {
+              if (term.sign > 0) posTags.set(t.name, (posTags.get(t.name) || 0) + (t.rank || 70));
+              else negTags.add(t.name);
+            }
+          } else if (term.type === 'genre') {
+            if (term.sign > 0) posGenres.set(term.label, (posGenres.get(term.label) || 0) + 2);
+            else negGenres.add(term.label);
+          } else if (term.type === 'tag') {
+            if (term.sign > 0) posTags.set(term.label, (posTags.get(term.label) || 0) + 120);
+            else negTags.add(term.label);
+          }
+        }
+
+        negGenres.forEach(g => posGenres.delete(g));
+        negTags.forEach(t => posTags.delete(t));
+
+        const topPosTags = Array.from(posTags.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k);
+        const topPosGenres = Array.from(posGenres.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k]) => k);
+
+        return {
+          posTags: topPosTags,
+          posGenres: topPosGenres,
+          negTags: Array.from(negTags).slice(0, 6),
+          negGenres: Array.from(negGenres).slice(0, 6),
+          seedIds
+        };
+      }
+
+      async function solveEquation() {
+        const dnaBox = document.getElementById('synthesizedDna');
+        const grid = document.getElementById('arithmeticGrid');
+        if (!eqTerms.length) {
+          dnaBox.innerHTML = '';
+          dnaBox.hidden = true;
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Add at least one positive case or forensic term to solve.</div>`;
+          return;
+        }
+
+        const dna = synthesizeDna();
+        dnaBox.hidden = false;
+        dnaBox.innerHTML = `
+          <div class="meta-row">
+            <strong style="color:var(--text);">Synthesized Forensic DNA:</strong>
+            ${dna.posGenres.map(g => `<span class="badge badge-emerald">+ ${AF.escapeHtml(g)}</span>`).join('')}
+            ${dna.posTags.map(t => `<span class="badge badge-cyan">+ #${AF.escapeHtml(t)}</span>`).join('')}
+            ${dna.negGenres.map(g => `<span class="badge badge-rose">− ${AF.escapeHtml(g)}</span>`).join('')}
+            ${dna.negTags.map(t => `<span class="badge badge-rose">− #${AF.escapeHtml(t)}</span>`).join('')}
+          </div>
+        `;
+
+        const posT = new Set(dna.posTags.map(x => x.toLowerCase()));
+        const posG = new Set(dna.posGenres.map(x => x.toLowerCase()));
+        const negT = new Set(dna.negTags.map(x => x.toLowerCase()));
+        const negG = new Set(dna.negGenres.map(x => x.toLowerCase()));
+
+        const entryOnly = document.getElementById('arithEntryPointsOnly')?.checked;
+        const pool = AF.CANONICAL_DOSSIER_LIST.filter(m => {
+          if (dna.seedIds.has(m.id)) return false;
+          if (entryOnly && AF.isSequelOrRecap(m)) return false;
+          if ((m.genres || []).some(g => negG.has(g.toLowerCase()))) return false;
+          if ((m.tags || []).some(t => negT.has(t.name.toLowerCase()))) return false;
+          return true;
+        });
+
+        const ranked = pool.map(m => {
+          let score = 0;
+          let hitCount = 0;
+          for (const t of (m.tags || [])) {
+            const tl = t.name.toLowerCase();
+            if (posT.has(tl)) { score += (t.rank || 70) * 1.25; hitCount++; }
+            if (negT.has(tl)) score -= (t.rank || 70) * 1.8;
+          }
+          for (const g of (m.genres || [])) {
+            const gl = g.toLowerCase();
+            if (posG.has(gl)) { score += 45; hitCount++; }
+            if (negG.has(gl)) score -= 90;
+          }
+          if (hitCount >= 3) score *= 1.18;
+          score += (m.averageScore || 80) * 0.4;
+          return { media: m, score };
+        }).sort((a, b) => b.score - a.score).slice(0, 18);
+
+        grid.innerHTML = ranked.length
+          ? ranked.map((r, i) => renderLabCard(r.media, `<span class="badge badge-emerald">#${i + 1} Fit</span>`)).join('')
+          : `<div class="empty-state" style="grid-column:1/-1;">No case files satisfied all exclusion constraints. Try flipping or removing a negative term.</div>`;
+        wireCards(grid, ranked.map(r => r.media));
+      }
+
+      async function loadDefaultPresetEquation() {
+        const [jinx, forensic] = await Promise.all([
+          AF.fetchAnimeById(101), // The Jinx
+          AF.fetchAnimeById(104)  // Forensic Files
+        ]);
+        eqTerms = [];
+        if (jinx) eqTerms.push({ type: 'anime', label: AF.getDisplayTitle(jinx), sign: 1, anime: jinx });
+        if (forensic) eqTerms.push({ type: 'anime', label: AF.getDisplayTitle(forensic), sign: 1, anime: forensic });
+        eqTerms.push({ type: 'genre', label: 'Cult & Extremism', sign: -1 });
+        renderEquationBar();
+        solveEquation();
+      }
+
+      async function initArithmetic(seedIdOverride = null) {
+        await ensureTaxonomyLoaded();
+        if (arithmeticInitialized && !seedIdOverride) return;
+        arithmeticInitialized = true;
+
+        const params = new URLSearchParams(window.location.search);
+        const seedId = seedIdOverride || Number(params.get('seed'));
+        if (seedId) {
+          const seeded = await AF.fetchAnimeById(seedId);
+          if (seeded) {
+            eqTerms = [{ type: 'anime', label: AF.getDisplayTitle(seeded), sign: 1, anime: seeded }];
+            renderEquationBar();
+            solveEquation();
+            return;
+          }
+        }
+        await loadDefaultPresetEquation();
+      }
+
+      const eqAnimeInp = document.getElementById('eqAddAnime');
+      const eqAnimeDrop = document.getElementById('eqAnimeDropdown');
+      let eqSearchTimer = null;
+      eqAnimeInp.addEventListener('input', () => {
+        const q = eqAnimeInp.value.trim();
+        if (eqSearchTimer) clearTimeout(eqSearchTimer);
+        if (q.length < 2) { eqAnimeDrop.classList.remove('open'); return; }
+        eqSearchTimer = setTimeout(async () => {
+          const hits = await AF.searchAnimeQuick(q, 6);
+          if (!hits.length) { eqAnimeDrop.classList.remove('open'); return; }
+          eqAnimeDrop.innerHTML = hits.map(m => `
+            <div class="search-item" data-id="${m.id}">
+              <img src="${AF.escapeHtml(AF.getCover(m))}" alt="">
+              <div>
+                <div style="font-weight:700;font-size:13px;">${AF.escapeHtml(AF.getDisplayTitle(m))}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${m.seasonYear || ''} · ${(m.genres || []).slice(0, 2).join(', ')}</div>
+              </div>
+            </div>
+          `).join('');
+          eqAnimeDrop.classList.add('open');
+          eqAnimeDrop.querySelectorAll('.search-item').forEach((row, idx) => {
+            row.addEventListener('click', () => {
+              const m = hits[idx];
+              eqTerms.push({ type: 'anime', label: AF.getDisplayTitle(m), sign: 1, anime: m });
+              eqAnimeInp.value = '';
+              eqAnimeDrop.classList.remove('open');
+              renderEquationBar();
+              solveEquation();
+            });
+          });
+        }, 250);
+      });
+
+      document.getElementById('eqAddGenrePlus').addEventListener('click', () => {
+        const g = document.getElementById('eqAddGenre').value;
+        if (g) { eqTerms.push({ type: 'genre', label: g, sign: 1 }); renderEquationBar(); solveEquation(); }
+      });
+      document.getElementById('eqAddGenreMinus').addEventListener('click', () => {
+        const g = document.getElementById('eqAddGenre').value;
+        if (g) { eqTerms.push({ type: 'genre', label: g, sign: -1 }); renderEquationBar(); solveEquation(); }
+      });
+      function canonicalizeTag(input) {
+        if (!taxonomy?.tags?.length) return input.trim();
+        const low = input.trim().toLowerCase();
+        const exact = taxonomy.tags.find(t => t.name.toLowerCase() === low);
+        if (exact) return exact.name;
+        const partial = taxonomy.tags.find(t => t.name.toLowerCase().includes(low));
+        return partial ? partial.name : null;
+      }
+
+      document.getElementById('eqAddTagPlus').addEventListener('click', () => {
+        const raw = document.getElementById('eqAddTag').value.trim();
+        const t = canonicalizeTag(raw);
+        if (!t) return AF.toast(`"${raw}" is not a canonical forensic tag. Pick from the suggestions.`, 'warn');
+        eqTerms.push({ type: 'tag', label: t, sign: 1 }); document.getElementById('eqAddTag').value = ''; renderEquationBar(); solveEquation();
+      });
+      document.getElementById('eqAddTagMinus').addEventListener('click', () => {
+        const raw = document.getElementById('eqAddTag').value.trim();
+        const t = canonicalizeTag(raw);
+        if (!t) return AF.toast(`"${raw}" is not a canonical forensic tag. Pick from the suggestions.`, 'warn');
+        eqTerms.push({ type: 'tag', label: t, sign: -1 }); document.getElementById('eqAddTag').value = ''; renderEquationBar(); solveEquation();
+      });
+      document.getElementById('resetDefaultEqBtn').addEventListener('click', loadDefaultPresetEquation);
+      document.getElementById('solveEquationBtn').addEventListener('click', solveEquation);
+      document.getElementById('arithEntryPointsOnly').addEventListener('change', solveEquation);
+      document.addEventListener('click', (ev) => {
+        if (!ev.target.closest('#eqAddAnime') && !ev.target.closest('#eqAnimeDropdown')) {
+          eqAnimeDrop.classList.remove('open');
+        }
+      });
+
+      // ----------------------------------------------------------------------
+      // MODULE 4: CLASSIFIED CASE FILE ROULETTE
+      // ----------------------------------------------------------------------
+      let roulettePool = [];
+      let currentRoulette = null;
+      let rouletteRevealed = false;
+      let rouletteHints = { era: false, studio: false, source: false, staff: false };
+
+      function redactSynopsis(media) {
+        let text = AF.stripHtml(media.description || '');
+        if (!text) return 'No dossier summary available.';
+
+        const title = AF.getDisplayTitle(media);
+        const tokens = new Set([title]);
+        const ignore = new Set(['the','and','for','with','from','into','that','this','season','part','story','world','life','case','crime','murder','murders','killer']);
+
+        title.split(/[^a-zA-Z0-9]+/).forEach(w => {
+          if (w.length >= 4 && !ignore.has(w.toLowerCase())) {
+            tokens.add(w);
+          }
+        });
+
+        const sorted = Array.from(tokens).sort((a, b) => b.length - a.length);
+        let safe = AF.escapeHtml(text);
+        for (const tok of sorted) {
+          const esc = AF.escapeHtml(tok).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp(`(?<![a-zA-Z0-9])${esc}(?![a-zA-Z0-9])`, 'gi');
+          safe = safe.replace(re, '<span class="redacted-token">[REDACTED]</span>');
+        }
+        return safe;
+      }
+
+      async function rollRoulette(refetch = false) {
+        await ensureTaxonomyLoaded();
+        const stage = document.getElementById('rouletteStage');
+        const popMax = Number(document.getElementById('roulettePopSelect').value) || 0;
+        const genre = document.getElementById('rouletteGenreSelect').value;
+
+        if (refetch || !roulettePool.length) {
+          let pool = [...AF.CANONICAL_DOSSIER_LIST];
+          if (popMax) {
+            const sub = pool.filter(m => (m.popularity || 0) <= popMax);
+            if (sub.length >= 4) pool = sub;
+          }
+          if (genre) {
+            const sub = pool.filter(m => (m.genres || []).includes(genre));
+            if (sub.length >= 2) pool = sub;
+          }
+          roulettePool = pool;
+        }
+
+        if (!roulettePool.length) {
+          stage.innerHTML = `<div class="empty-state">No case files matched those filters. Try widening reach or category.</div>`;
+          return;
+        }
+        const idx = Math.floor(Math.random() * roulettePool.length);
+        currentRoulette = roulettePool.splice(idx, 1)[0];
+        rouletteRevealed = false;
+        rouletteHints = { era: false, studio: false, source: false, staff: false };
+        renderRouletteCard();
+      }
+
+      function renderRouletteCard() {
+        const stage = document.getElementById('rouletteStage');
+        const m = currentRoulette;
+        if (!m) return;
+        const wl = AF.getState().watchlist[m.id];
+
+        if (!rouletteRevealed) {
+          const studioName = (m.studios?.nodes || []).map(s => s.name).join(', ') || 'Independent';
+          const sourceLbl = AF.formatSourceLabel(m.source) || 'Case Dossier';
+          const staffList = AF.getKeyStaff(m).map(s => `${s.role}: ${s.name}`).join(' · ') || 'No lead investigator listed';
+          const eraFmt = `${m.seasonYear || 'Unknown Year'} · ${m.format || 'Dossier'}${m.episodes ? ' · ' + (m.episodes === 1 ? 'Feature' : m.episodes + ' eps') : ''}`;
+
+          stage.innerHTML = `
+            <div class="roulette-card">
+              <div class="meta-row" style="justify-content:space-between;margin-bottom:14px;">
+                <span class="badge badge-amber">CLASSIFIED CASE DOSSIER · TITLE &amp; ARTWORK SEALED</span>
+                <div class="meta-row">
+                  <span class="badge badge-cyan">${AF.escapeHtml(AF.classifyDub(m))}</span>
+                  ${(m.genres || []).slice(0, 3).map(g => `<span class="badge badge-purple">${AF.escapeHtml(g)}</span>`).join('')}
+                </div>
+              </div>
+              <p style="font-size:15px;line-height:1.7;color:#e2e8f0;margin:0 0 16px;white-space:pre-line;">
+                ${redactSynopsis(m)}
+              </p>
+              <!-- Optional Spoiler-Free Forensic Hints -->
+              <div style="margin-bottom:18px;padding:12px;border-radius:10px;background:rgba(8,11,18,0.6);border:1px solid var(--border);">
+                <div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Declassify Partial Evidence Hints (Click to Peek)</div>
+                <div class="pills-row">
+                  <button type="button" class="pill ${rouletteHints.era ? 'active' : ''}" data-hint="era">${rouletteHints.era ? '📅 ' + AF.escapeHtml(eraFmt) : '📅 Reveal Era &amp; Format'}</button>
+                  <button type="button" class="pill ${rouletteHints.studio ? 'active' : ''}" data-hint="studio">${rouletteHints.studio ? '🎬 ' + AF.escapeHtml(studioName) : '🎬 Reveal Network / Producer'}</button>
+                  <button type="button" class="pill ${rouletteHints.source ? 'active' : ''}" data-hint="source">${rouletteHints.source ? '📖 Evidence: ' + AF.escapeHtml(sourceLbl) : '📖 Reveal Evidence Source'}</button>
+                  <button type="button" class="pill ${rouletteHints.staff ? 'active' : ''}" data-hint="staff">${rouletteHints.staff ? '🕵️ ' + AF.escapeHtml(staffList) : '🕵️ Reveal Lead Investigator / Director'}</button>
+                </div>
+              </div>
+              <div class="meta-row">
+                <button type="button" class="btn btn-emerald" id="blindSaveBtn">${wl ? '✓ Saved Blindly (' + AF.escapeHtml(wl.status) + ')' : '★ Blind Save to Case Backlog'}</button>
+                <button type="button" class="btn btn-primary" id="revealRouletteBtn">👁 Declassify Case &amp; Poster</button>
+                <button type="button" class="btn" id="skipRouletteBtn" style="margin-left:auto;">🎲 Next Classified File</button>
+              </div>
+            </div>
+          `;
+          stage.querySelectorAll('[data-hint]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const k = btn.dataset.hint;
+              rouletteHints[k] = !rouletteHints[k];
+              renderRouletteCard();
+            });
+          });
+        } else {
+          const title = AF.getDisplayTitle(m);
+          const cleanDesc = AF.stripHtml(m.description || '').trim();
+          stage.innerHTML = `
+            <div class="roulette-card">
+              <div class="detail-hero">
+                <img class="detail-cover" src="${AF.escapeHtml(AF.getCover(m))}" alt="${AF.escapeHtml(title)}">
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <div class="meta-row">
+                    <span class="badge badge-emerald">DECLASSIFIED</span>
+                    <span class="badge badge-cyan">${AF.escapeHtml(AF.classifyDub(m))}</span>
+                    ${m.averageScore ? `<span class="badge badge-accent">★ ${m.averageScore}%</span>` : ''}
+                    <span class="badge badge-muted">Reach ${AF.formatCompactNumber(m.popularity)}</span>
+                    ${m.seasonYear ? `<span class="badge badge-muted">${m.seasonYear}</span>` : ''}
+                  </div>
+                  <h3 style="margin:0;font-size:20px;">${AF.escapeHtml(title)}</h3>
+                  <div style="font-size:12.5px;color:var(--text-muted);">
+                    ${AF.escapeHtml((m.studios?.nodes || []).map(s => s.name).join(', ') || 'Independent')} · ${AF.escapeHtml((m.genres || []).join(', '))}
+                  </div>
+                  <p style="margin:0;font-size:13.5px;color:#cbd5e1;white-space:pre-line;max-height:195px;overflow-y:auto;padding-bottom:10px;line-height:1.55;">
+                    ${AF.escapeHtml(cleanDesc)}
+                  </p>
+                  <div class="meta-row" style="margin-top:auto;">
+                    <button type="button" class="btn btn-emerald btn-sm" id="blindSaveBtn">${wl ? '✓ In Case Files (' + AF.escapeHtml(wl.status) + ')' : '+ Save to Case Files'}</button>
+                    <button type="button" class="btn btn-sm" id="rouletteDetailsBtn">Full Case Dossier</button>
+                    <a class="btn btn-cyan btn-sm" href="./vibe-graph.html?seed=${m.id}">Evidence Graph ↗</a>
+                    <button type="button" class="btn btn-primary btn-sm" id="skipRouletteBtn" style="margin-left:auto;">🎲 Draw Another</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          stage.querySelector('#rouletteDetailsBtn').addEventListener('click', () => AF.openDetailModal(m));
+        }
+
+        stage.querySelector('#blindSaveBtn').addEventListener('click', () => {
+          AF.upsertWatchlistItem(m, {
+            status: 'Case Backlog',
+            notes: wl?.notes || '[Discovered via Classified Case File Roulette]'
+          });
+          AF.toast(rouletteRevealed ? `Saved "${AF.getDisplayTitle(m)}" to Case Files!` : 'Saved classified case blindly to Case Backlog!', 'success');
+          renderRouletteCard();
+        });
+
+        const revBtn = stage.querySelector('#revealRouletteBtn');
+        if (revBtn) {
+          revBtn.addEventListener('click', () => {
+            rouletteRevealed = true;
+            renderRouletteCard();
+          });
+        }
+        stage.querySelector('#skipRouletteBtn').addEventListener('click', () => rollRoulette(false));
+      }
+
+      document.getElementById('rollRouletteBtn').addEventListener('click', () => rollRoulette(true));
+      document.getElementById('roulettePopSelect').addEventListener('change', () => rollRoulette(true));
+      document.getElementById('rouletteGenreSelect').addEventListener('change', () => rollRoulette(true));
+
+      AF.onStateChange(() => {
+        if (activeTab === 'roulette' && currentRoulette) renderRouletteCard();
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      const deepStaff = params.get('staff');
+      const initialTab = deepStaff
+        ? 'auteur'
+        : (['vibe-map', 'auteur', 'arithmetic', 'roulette'].includes(params.get('tab')) ? params.get('tab') : 'vibe-map');
+      if (deepStaff) {
+        loadedTabs.add('auteur');
+        switchTab('auteur');
+        document.getElementById('staffSearchInput').value = deepStaff;
+        loadAuteur(deepStaff);
+      } else {
+        switchTab(initialTab);
+      }
+    })();
+  </script>
+</body>
+</html>

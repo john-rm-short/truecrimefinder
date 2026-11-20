@@ -1,0 +1,17 @@
+{
+  "name": "TrueCrimeFinder Web Suite",
+  "short_name": "TrueCrimeFinder",
+  "description": "Three-page static true crime docuseries, podcast, and case discovery, tracking, evidence graph, and forensic exploration suite.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#080b12",
+  "theme_color": "#080b12",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta name="referrer" content="no-referrer-when-downgrade">
+  <title>TrueCrimeFinder — Case Hub &amp; Daily Dossier</title>
+  <meta name="description" content="Zero-build static true crime docuseries, podcast, and case discovery, live network releases, 7-day broadcast schedule, personal case file tracker, radar, and archives.">
+  <meta name="theme-color" content="#080b12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TrueCrimeFinder">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="af-nav-host"></div>
+
+  <main class="container" id="main-content">
+    <!-- Global True Crime Search (/) -->
+    <section class="global-search-wrap" aria-label="Global True Crime Search">
+      <div class="global-search-bar">
+        <span aria-hidden="true" style="color:var(--amber);font-size:16px;">🔍</span>
+        <input id="globalSearchInput" type="search" placeholder="Search any true crime docuseries, case, podcast, or investigator (press / to focus)..." autocomplete="off" aria-label="Search true crime cases, shows, and podcasts">
+        <span class="kbd" title="Press / to focus search">/</span>
+        <button type="button" class="btn btn-sm btn-cyan" id="quickVibeJumpBtn" title="Search this forensic prompt in Evidence & Vibe Graph">Evidence Graph ↗</button>
+      </div>
+      <div id="globalSearchDropdown" class="search-dropdown" role="listbox" aria-label="Search suggestions"></div>
+    </section>
+
+    <!-- Main Hub Navigation Tabs -->
+    <div class="tabs-bar" role="tablist" aria-label="Case Hub Sections">
+      <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="releases">🗂️ Releases &amp; Networks</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="schedule">📅 7-Day Crime Schedule</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="saved">⭐ Case Files &amp; Sync</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="radar">📡 Crime Radar (News · YT)</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="archives">🏛️ Archives (Era &amp; Network)</button>
+    </div>
+
+    <!-- TAB 1: RELEASES & NETWORKS -->
+    <section id="tab-releases" class="tab-panel" role="tabpanel">
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">True Crime Dossiers, Docuseries &amp; Multi-Network Catalog</h2>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+              Blends canonical true crime docuseries, feature documentaries, live TVMaze investigative broadcasts, and Apple Podcasts True Crime feeds across 12 networks.
+            </div>
+          </div>
+          <div class="meta-row">
+            <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer;">
+              <input type="checkbox" id="releasesJpOnly"> US Cases only
+            </label>
+            <select id="lengthFilterSelect" class="select" aria-label="Filter by Format">
+              <option value="all">Format: All</option>
+              <option value="tv">Docuseries &amp; TV</option>
+              <option value="movies">Feature Docs</option>
+              <option value="shorts">Podcasts / Audio</option>
+            </select>
+            <select id="dubFilterSelect" class="select" aria-label="Filter by Case Status">
+              <option value="all">Case Status: All</option>
+              <option value="solved">Solved / Convicted</option>
+              <option value="cold">Cold Case / Unsolved</option>
+              <option value="exonerated">Exonerated / Wrongful Conviction</option>
+            </select>
+            <button type="button" class="btn btn-sm" id="toggleCompactBtn" title="Toggle compact card grid">⊞ Compact</button>
+            <button type="button" class="btn btn-sm btn-cyan" id="batchTmdbBtn" title="Enrich visible cards with TMDB US JustWatch providers">TMDB US Batch Enrich</button>
+            <button type="button" class="btn btn-sm" id="refreshReleasesBtn">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="pills-row" id="platformFilterBar" aria-label="Streaming network filters"></div>
+      </div>
+      <div id="releasesMeta" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;"></div>
+      <div id="releasesGrid" class="anime-grid"></div>
+    </section>
+
+    <!-- TAB 2: 7-DAY SCHEDULE -->
+    <section id="tab-schedule" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header" style="margin-bottom:10px;">
+          <div>
+            <h2 class="panel-title">7-Day Crime Broadcast &amp; Podcast Schedule (Mon – Sun)</h2>
+            <div id="scheduleRangeLabel" style="font-size:12px;color:var(--text-muted);margin-top:2px;">Loading local week bounds...</div>
+          </div>
+          <div class="meta-row">
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer;" title="Show delayed streaming or podcast follow-up drops">
+              <input type="checkbox" id="scheduleShowDubs" checked> Show Delayed Stream/Podcast Drops
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer;">
+              <input type="checkbox" id="scheduleJpOnly"> US Broadcasts only
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer;">
+              <input type="checkbox" id="scheduleWatchlistOnly"> Saved Case Files only
+            </label>
+            <button type="button" class="btn btn-sm" id="refreshScheduleBtn">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="pills-row" id="scheduleDayJumpBar" aria-label="Jump to day column"></div>
+      </div>
+      <div id="scheduleGrid" class="schedule-grid"></div>
+    </section>
+
+    <!-- TAB 3: SAVED CASE FILES & SYNC -->
+    <section id="tab-saved" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Personal Case File Dossier</h2>
+            <div id="watchlistSummary" style="font-size:12px;color:var(--text-muted);margin-top:2px;">0 case files saved in shared origin storage</div>
+          </div>
+          <div class="meta-row">
+            <a class="btn btn-sm" href="#savedSyncAnchor">↓ Sync &amp; Import</a>
+            <a class="btn btn-primary btn-sm" href="./vibe-graph.html?mode=watchlist">Map Case File Constellation ↗</a>
+            <select id="wlSortSelect" class="select" aria-label="Sort case files">
+              <option value="updated">Sort: Recently Updated</option>
+              <option value="rating">Sort: My Case Rating</option>
+              <option value="score">Sort: Community Rating</option>
+              <option value="title">Sort: Case Title (A–Z)</option>
+            </select>
+          </div>
+        </div>
+        <div class="pills-row" id="wlStatusPills" aria-label="Case status filters"></div>
+      </div>
+
+      <div id="watchlistGrid" class="anime-grid" style="margin-bottom:24px;"></div>
+
+      <!-- Persistence, Gist Sync, Dossier Pack Importer & API Keys -->
+      <div class="grid-2" id="savedSyncAnchor" style="scroll-margin-top:80px;">
+        <!-- Permanent Remote Storage: Private GitHub Gist Wizard -->
+        <div class="panel" style="grid-column: 1 / -1;">
+          <div class="panel-header">
+            <div>
+              <h3 class="panel-title">☁️ Permanent Remote Storage (Private GitHub Gist)</h3>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                Free, private, version-controlled cloud storage for your Case File Watchlist, ratings, investigator notes, and network/case status overrides across all devices. Auto-pulls on boot &amp; auto-pushes after any edit to <code>truecrimefinder-sync.json</code>.
+              </div>
+            </div>
+            <span class="badge badge-cyan" id="gistStatusBadge">Local Only</span>
+          </div>
+
+          <div class="wizard-steps" id="gistWizardSteps">
+            <div class="wizard-step" id="wizStep1">
+              <div style="font-weight:700;font-size:12.5px;margin-bottom:4px;"><span class="wizard-step-num">1</span>Generate Minimal Token</div>
+              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">Creates a GitHub token scoped <strong>only to <code>gist</code></strong> (cannot touch your repos).</div>
+              <a class="btn btn-xs btn-cyan" href="https://github.com/settings/tokens/new?scopes=gist&amp;description=TrueCrimeFinder+Permanent+Sync" target="_blank" rel="noopener">Open GitHub Token Page ↗</a>
+            </div>
+            <div class="wizard-step" id="wizStep2">
+              <div style="font-weight:700;font-size:12.5px;margin-bottom:4px;"><span class="wizard-step-num">2</span>Connect &amp; Auto-Discover</div>
+              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px;">Paste your token below. TrueCrimeFinder automatically finds your existing sync Gist or creates a new Private Gist.</div>
+            </div>
+            <div class="wizard-step" id="wizStep3">
+              <div style="font-weight:700;font-size:12.5px;margin-bottom:4px;"><span class="wizard-step-num">3</span>Permanent Auto-Sync Active</div>
+              <div id="gistConnectedInfo" style="font-size:11.5px;color:var(--text-muted);">Not connected yet. Every push keeps full Git revision history on GitHub.</div>
+            </div>
+          </div>
+
+          <form onsubmit="return false;" class="form-grid" style="margin-bottom:10px;">
+            <div class="form-field">
+              <label for="gistTokenInput">GitHub Personal Access Token (<code>gist</code> scope only)</label>
+              <input id="gistTokenInput" type="password" autocomplete="off" class="input input-full" placeholder="ghp_... or github_pat_...">
+            </div>
+            <div class="form-field">
+              <label for="gistIdInput">Private Gist ID (auto-filled on Connect)</label>
+              <input id="gistIdInput" type="text" autocomplete="off" class="input input-full" placeholder="Auto-discovered or created automatically">
+            </div>
+          </form>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);margin-bottom:12px;cursor:pointer;">
+            <input type="checkbox" id="gistAutoSyncCheck" checked> Enable auto-pull on boot &amp; debounced auto-push across all 3 pages
+          </label>
+          <div class="meta-row">
+            <button type="button" class="btn btn-primary btn-sm" id="connectGistWizardBtn">⚡ Connect &amp; Auto-Setup Private Gist</button>
+            <button type="button" class="btn btn-sm" id="saveGistConfigBtn">Save Manual ID</button>
+            <button type="button" class="btn btn-emerald btn-sm" id="pullGistBtn">↓ Pull &amp; Merge</button>
+            <button type="button" class="btn btn-sm" id="pushGistBtn">↑ Push Now</button>
+            <button type="button" class="btn btn-danger btn-xs" id="disconnectGistBtn" style="margin-left:auto;" hidden>Disconnect</button>
+          </div>
+          <div id="gistLastSyncLabel" style="font-size:11.5px;color:var(--text-dim);margin-top:8px;"></div>
+        </div>
+
+        <!-- Case Dossier Pack Importer & TMDB Key -->
+        <div class="panel" style="grid-column: 1 / -1;">
+          <div class="panel-header">
+            <h3 class="panel-title">Case Dossier Pack Importer, TMDB &amp; Cache</h3>
+            <span class="badge badge-purple">Instant Seed</span>
+          </div>
+          <div class="grid-2" style="margin-bottom:12px;">
+            <form onsubmit="return false;" class="form-field">
+              <label for="anilistImportUser">Quick-Import Case Dossier Collection (e.g. <code>starter</code>, <code>Cold Case</code>, <code>Exonerated</code>, <code>HBO</code>, <code>Podcasts</code>)</label>
+              <div style="display:flex;gap:8px;">
+                <input id="anilistImportUser" type="text" class="input input-full" value="starter" placeholder="starter, Cold Case, Exonerated, HBO, Podcasts...">
+                <button type="button" class="btn btn-cyan btn-sm" id="importAnilistBtn">Import Dossier Pack</button>
+              </div>
+            </form>
+            <form onsubmit="return false;" class="form-field">
+              <label for="tmdbKeyInput">Optional TMDB API Key (US JustWatch Providers)</label>
+              <div style="display:flex;gap:8px;">
+                <input id="tmdbKeyInput" type="password" autocomplete="off" class="input input-full" placeholder="TMDB v3 API key (stored locally only)">
+                <button type="button" class="btn btn-sm" id="saveTmdbKeyBtn">Save Key</button>
+              </div>
+            </form>
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <div id="cacheStatsLabel" style="font-size:12px;color:var(--text-muted);">IndexedDB cache: checking...</div>
+            <div class="meta-row">
+              <button type="button" class="btn btn-xs" id="clearApiCacheBtn">Clear API Cache</button>
+              <button type="button" class="btn btn-xs btn-danger" id="clearAllCacheBtn">Clear All + Vectors</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Portable Sync Codes & JSON Backup -->
+        <div class="panel" style="grid-column: 1 / -1;">
+          <div class="panel-header">
+            <h3 class="panel-title">Portable Sync Codes (UTF-8 TextEncoder) &amp; JSON Backups</h3>
+            <span class="badge badge-emerald">Secrets stripped from Sync Codes</span>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="meta-row" style="margin-bottom:8px;">
+                <button type="button" class="btn btn-sm btn-cyan" id="genSyncCodeBtn">Generate Sync Code</button>
+                <button type="button" class="btn btn-sm" id="copySyncUrlBtn">Copy #sync= Share URL</button>
+                <button type="button" class="btn btn-sm" id="exportJsonBtn">Export JSON</button>
+                <label class="btn btn-sm" style="margin:0;">
+                  Import JSON <input type="file" id="importJsonFile" accept="application/json" hidden>
+                </label>
+              </div>
+              <textarea id="syncCodeOutput" class="textarea" readonly placeholder="Click 'Generate Sync Code' to create a portable UTF-8 Base64 snapshot (no API keys included)..."></textarea>
+            </div>
+            <div>
+              <div class="meta-row" style="margin-bottom:8px;">
+                <button type="button" class="btn btn-sm btn-emerald" id="applySyncCodeBtn">Merge Sync Code</button>
+              </div>
+              <textarea id="syncCodeInput" class="textarea" placeholder="Paste a Sync Code from another device here to merge Case Files &amp; overrides..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: RADAR -->
+    <section id="tab-radar" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Active &amp; High-Priority True Crime Radar</h2>
+            <div style="font-size:12px;color:var(--text-muted);">Ongoing investigations, forensic genealogy breakthroughs, and top-rated docuseries</div>
+          </div>
+          <div class="meta-row">
+            <a class="btn btn-sm btn-cyan" href="#radarFeedsAnchor">↓ Crime News &amp; Trailers</a>
+            <button type="button" class="btn btn-sm" id="refreshUpcomingBtn">↻ Refresh</button>
+          </div>
+        </div>
+        <div id="upcomingGrid" class="anime-grid"></div>
+      </div>
+
+      <div class="grid-2" id="radarFeedsAnchor" style="scroll-margin-top:80px;">
+        <!-- True Crime News & Investigative RSS -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">True Crime &amp; Investigative Journalism Wire</h3>
+            <div class="meta-row">
+              <button type="button" class="btn btn-xs" id="refreshAnnBtn">↻ Reload</button>
+              <a class="btn btn-xs btn-cyan" href="https://www.themarshallproject.org/records" target="_blank" rel="noopener">Marshall Project ↗</a>
+            </div>
+          </div>
+          <div id="annNewsList" style="display:flex;flex-direction:column;gap:10px;max-height:440px;overflow-y:auto;"></div>
+        </div>
+
+        <!-- YouTube True Crime Hunter -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">YouTube Case Hunter (Trailers · Interrogations · Docs)</h3>
+            <a id="ytDirectLink" class="btn btn-xs btn-cyan" href="https://www.youtube.com/results?search_query=true+crime+documentary+official+trailer" target="_blank" rel="noopener">Open on YouTube ↗</a>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <input id="ytSearchInput" type="search" class="input input-full" value="true crime documentary official trailer" placeholder="Search true crime trailers, police interrogations, forensic docs...">
+            <button type="button" class="btn btn-primary btn-sm" id="ytSearchBtn">Hunt</button>
+          </div>
+          <div class="pills-row" style="margin-bottom:12px;">
+            <button type="button" class="pill yt-preset" data-q="true crime documentary official trailer">Docuseries Trailers</button>
+            <button type="button" class="pill yt-preset" data-q="police interrogation analysis true crime">Interrogation Tapes</button>
+            <button type="button" class="pill yt-preset" data-q="forensic genealogy cold case solved">Forensic Genealogy</button>
+            <button type="button" class="pill yt-preset" data-q="wrongful conviction innocence project documentary">Exoneration Docs</button>
+          </div>
+          <div id="ytResultsList" style="display:flex;flex-direction:column;gap:10px;max-height:440px;overflow-y:auto;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ARCHIVES -->
+    <section id="tab-archives" class="tab-panel" role="tabpanel" hidden>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-header">
+          <div class="pills-row" role="tablist" aria-label="Archive mode">
+            <button type="button" class="pill active" id="archiveModeYear">📅 By Era &amp; Year (1970–2026)</button>
+            <button type="button" class="pill" id="archiveModeStudio">🎬 By Network / Producer</button>
+          </div>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;">
+            <input type="checkbox" id="archiveEntryPointsOnly"> Standalone / Season 1 Entry Points Only
+          </label>
+        </div>
+
+        <!-- By Year Controls -->
+        <div id="archiveYearControls">
+          <div class="meta-row" style="margin-bottom:10px;">
+            <label for="archiveYearSelect" style="font-size:12.5px;color:var(--text-muted);">Release Year:</label>
+            <select id="archiveYearSelect" class="select"></select>
+            <select id="archiveFormatSelect" class="select" aria-label="Format filter">
+              <option value="">All Formats</option>
+              <option value="DOCUSERIES">Docuseries</option>
+              <option value="FEATURE_DOC">Feature Documentary</option>
+              <option value="PODCAST">True Crime Podcast</option>
+              <option value="TV_SERIES">Investigative TV Series</option>
+            </select>
+            <select id="archiveSortSelect" class="select" aria-label="Sort archive">
+              <option value="SCORE_DESC">Top Rated</option>
+              <option value="POPULARITY_DESC">Most Widely Followed</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" id="loadYearArchiveBtn">Browse Year</button>
+          </div>
+          <div class="pills-row" id="decadeQuickPills"></div>
+        </div>
+
+        <!-- By Network / Producer Controls -->
+        <div id="archiveStudioControls" hidden>
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <input id="studioSearchInput" type="search" class="input" style="flex:1;min-width:220px;" placeholder="Search any crime network or studio (e.g. HBO Documentary Films, Netflix, Serial Productions, Wondery)...">
+            <button type="button" class="btn btn-primary btn-sm" id="searchStudioBtn">Search Producer</button>
+          </div>
+          <div class="pills-row" id="curatedStudiosBar"></div>
+        </div>
+      </div>
+
+      <div id="archivesMeta" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;"></div>
+      <div id="archivesGrid" class="anime-grid"></div>
+    </section>
+  </main>
+
+  <script src="./shared-core.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      const AF = window.TrueCrimeFinderCore;
+      AF.mountNav('hub');
+
+      // ----------------------------------------------------------------------
+      // State & Tab Management
+      // ----------------------------------------------------------------------
+      let activeTab = 'releases';
+      let activePlatform = 'all'; // 'all' | 'free' | platformId
+      let activeDubFilter = 'all';
+      let activeLengthFilter = 'all';
+      let releasesCache = [];
+      let tmdbExtraByAnimeId = new Map();
+      let scheduleCache = [];
+      let wlFilterStatus = 'All';
+      let archiveMode = 'year';
+      let loadedTabs = new Set();
+
+      const CURATED_STUDIOS = [
+        'HBO Documentary Films', 'Netflix', 'Serial Productions', 'NBC News',
+        'CBS News', 'ABC News Studios', 'Wondery', 'APM Reports',
+        'New Hampshire Public Radio', 'Raw TV', 'A&E Originals',
+        'Duplass Brothers Productions', 'ESPN Films', 'Cosgrove/Meurer Productions'
+      ];
+
+      function switchTab(tabName) {
+        activeTab = tabName;
+        document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => {
+          const isAct = btn.dataset.tab === tabName;
+          btn.classList.toggle('active', isAct);
+          btn.setAttribute('aria-selected', String(isAct));
+        });
+        document.querySelectorAll('.tab-panel').forEach(sec => {
+          sec.hidden = sec.id !== `tab-${tabName}`;
+        });
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tabName);
+        history.replaceState(null, '', url.toString());
+
+        if (!loadedTabs.has(tabName)) {
+          loadedTabs.add(tabName);
+          if (tabName === 'releases') loadReleases();
+          if (tabName === 'schedule') loadSchedule();
+          if (tabName === 'saved') renderSavedTab();
+          if (tabName === 'radar') { loadUpcomingRadar(); loadAnnNews(); huntYouTube(); }
+          if (tabName === 'archives') loadYearArchive();
+        } else if (tabName === 'saved') {
+          renderSavedTab();
+        }
+      }
+
+      document.querySelectorAll('.tabs-bar .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      // ----------------------------------------------------------------------
+      // Global Case Search (/)
+      // ----------------------------------------------------------------------
+      const searchInput = document.getElementById('globalSearchInput');
+      const searchDropdown = document.getElementById('globalSearchDropdown');
+      let searchTimer = null;
+
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+          ev.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+        } else if (ev.key === 'Escape') {
+          searchDropdown.classList.remove('open');
+        }
+      });
+
+      document.addEventListener('click', (ev) => {
+        if (!ev.target.closest('.global-search-wrap')) {
+          searchDropdown.classList.remove('open');
+        }
+      });
+
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        if (searchTimer) clearTimeout(searchTimer);
+        if (q.length < 2) {
+          searchDropdown.classList.remove('open');
+          return;
+        }
+        searchTimer = setTimeout(async () => {
+          searchDropdown.innerHTML = `<div style="padding:14px;color:var(--text-muted);"><span class="spinner"></span> Searching Case Catalog, TVMaze &amp; Apple Podcasts...</div>`;
+          searchDropdown.classList.add('open');
+          try {
+            const results = await AF.searchAnimeQuick(q, 8);
+            if (!results.length) {
+              searchDropdown.innerHTML = `<div style="padding:14px;color:var(--text-muted);">No case files matched "${AF.escapeHtml(q)}".</div>`;
+              return;
+            }
+            searchDropdown.innerHTML = results.map(m => {
+              const title = AF.getDisplayTitle(m);
+              const wl = AF.getState().watchlist[m.id];
+              const caseSt = AF.classifyDub(m);
+              return `
+                <div class="search-item" data-id="${m.id}" role="option">
+                  <img src="${AF.escapeHtml(AF.getCover(m))}" alt="">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${AF.escapeHtml(title)}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted);">
+                      ${AF.escapeHtml(m.format || '')} ${m.seasonYear ? '· ' + m.seasonYear : ''} · <span style="color:var(--cyan);">${AF.escapeHtml(caseSt)}</span> ${m.averageScore ? '· ★ ' + m.averageScore + '%' : ''}
+                      ${wl ? `· <span style="color:var(--emerald);">${AF.escapeHtml(wl.status)}</span>` : ''}
+                    </div>
+                  </div>
+                  <a class="btn btn-xs btn-cyan" href="./vibe-graph.html?seed=${m.id}" onclick="event.stopPropagation();">Graph</a>
+                  <a class="btn btn-xs" href="./eclectic-lab.html?tab=arithmetic&seed=${m.id}" onclick="event.stopPropagation();">± Arith</a>
+                </div>
+              `;
+            }).join('');
+            searchDropdown.querySelectorAll('.search-item').forEach((row, idx) => {
+              row.addEventListener('click', () => {
+                searchDropdown.classList.remove('open');
+                AF.openDetailModal(results[idx]);
+              });
+            });
+          } catch (err) {
+            searchDropdown.innerHTML = `<div style="padding:14px;color:var(--rose);">Search failed: ${AF.escapeHtml(err.message)}</div>`;
+          }
+        }, 300);
+      });
+
+      document.getElementById('quickVibeJumpBtn').addEventListener('click', () => {
+        const q = searchInput.value.trim();
+        window.location.href = q ? `./vibe-graph.html?vibe=${encodeURIComponent(q)}` : './vibe-graph.html';
+      });
+
+      // ----------------------------------------------------------------------
+      // Card Renderer
+      // ----------------------------------------------------------------------
+      function renderAnimeCard(media, options = {}) {
+        const state = AF.getState();
+        const wl = state.watchlist[media.id];
+        const title = AF.getDisplayTitle(media);
+        const cover = AF.getCover(media);
+        const extra = tmdbExtraByAnimeId.get(media.id) || [];
+        const platforms = AF.detectPlatforms(media, extra);
+        const dubInfo = AF.getDubTrackInfo(media, media._recentEp || null);
+        const freeAds = AF.isFreeWithAds(media, platforms);
+
+        const topLeftBadges = [];
+        if (options.airingBadge) topLeftBadges.push(options.airingBadge);
+        else if (media.format) topLeftBadges.push(`<span class="badge badge-muted">${AF.escapeHtml(media.format)}</span>`);
+        if (wl) topLeftBadges.push(`<span class="badge badge-emerald">${AF.escapeHtml(wl.status)}</span>`);
+
+        const topRight = media.averageScore
+          ? `<span class="badge badge-accent">★ ${media.averageScore}%</span>`
+          : '';
+
+        const bottomBadges = [];
+        const caseSt = dubInfo.dub;
+        const caseBadgeClass = caseSt === 'Cold Case'
+          ? 'badge-cyan'
+          : caseSt === 'Exonerated'
+            ? 'badge-purple'
+            : caseSt === 'Simul-Release'
+              ? 'badge-emerald'
+              : 'badge-amber';
+
+        if (dubInfo.isSimuldub && dubInfo.dubEp) {
+          bottomBadges.push(`<span class="badge badge-emerald" title="Same-day Simul-Release">Simul-Release Ep ${dubInfo.dubEp}</span>`);
+        } else if (dubInfo.dubLag > 0) {
+          bottomBadges.push(`<span class="badge badge-cyan" title="Staggered Release (${dubInfo.dubLag}w behind broadcast)">Staggered (−${dubInfo.dubLag}w)</span>`);
+        } else {
+          bottomBadges.push(`<span class="badge ${caseBadgeClass}" title="Case Status / Release Classification">${AF.escapeHtml(caseSt)}</span>`);
+        }
+
+        if (freeAds) bottomBadges.push(`<span class="badge badge-emerald">Free / Audio</span>`);
+        if (options.extraBadge) bottomBadges.push(options.extraBadge);
+
+        const leadStudio = media.studios?.nodes?.[0]?.name || '';
+        const studioEl = leadStudio
+          ? `<a href="./index.html?tab=archives&amp;studio=${encodeURIComponent(leadStudio)}" style="color:var(--cyan);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Browse ${AF.escapeHtml(leadStudio)} in Archives">${AF.escapeHtml(leadStudio)}</a>`
+          : `<span>${AF.escapeHtml((media.genres || []).slice(0, 2).join(', ') || 'True Crime')}</span>`;
+        const subTags = AF.getTopSubgenreTags(media, 2);
+
+        return `
+          <article class="anime-card" tabindex="0" data-anime-id="${media.id}" aria-label="${AF.escapeHtml(title)}">
+            <div class="anime-card-cover-wrap">
+              <img class="anime-card-cover" src="${AF.escapeHtml(cover)}" alt="${AF.escapeHtml(title)}" loading="lazy">
+              <div class="anime-card-overlay-top">
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">${topLeftBadges.join('')}</div>
+                <div>${topRight}</div>
+              </div>
+              <div class="anime-card-overlay-bottom">${bottomBadges.join('')}</div>
+              ${!options.watchlistControls ? `<button type="button" class="quick-wl-btn ${wl ? 'saved' : ''}" data-quick-wl="${media.id}" title="${wl ? 'Saved in Case Files (click to edit)' : 'Quick-add to Case Backlog'}">${wl ? '✓ Saved' : '+ Case File'}</button>` : ''}
+            </div>
+            <div class="anime-card-body">
+              <h3 class="anime-card-title" title="${AF.escapeHtml(title)}">${AF.escapeHtml(title)}</h3>
+              <div class="anime-card-meta">
+                ${studioEl}
+                <span style="flex-shrink:0;">${media.seasonYear || ''}${media.episodes ? ' · ' + (media.episodes === 1 ? 'Feature' : media.episodes + ' eps') : ''}</span>
+              </div>
+              ${subTags.length ? `<div style="font-size:10.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subTags.map(t => '#' + AF.escapeHtml(t)).join(' · ')}</div>` : ''}
+              ${options.watchlistControls ? options.watchlistControls : `
+                <div class="anime-card-platforms">
+                  ${platforms.slice(0, 3).map(p => `<span class="platform-tag" style="color:${p.color};border-color:${p.color}55;">${AF.escapeHtml(p.name)}</span>`).join('')}
+                  ${platforms.length > 3 ? `<span class="platform-tag">+${platforms.length - 3}</span>` : ''}
+                </div>
+              `}
+            </div>
+          </article>
+        `;
+      }
+
+      function attachCardHandlers(container, itemsById) {
+        container.querySelectorAll('.anime-card').forEach(card => {
+          const open = () => {
+            const id = Number(card.dataset.animeId);
+            AF.openDetailModal(itemsById.get(id) || id);
+          };
+          card.addEventListener('click', (ev) => {
+            if (ev.target.closest('button, a')) return;
+            open();
+          });
+          card.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              open();
+            }
+          });
+        });
+        container.querySelectorAll('[data-quick-wl]').forEach(btn => {
+          btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const id = Number(btn.dataset.quickWl);
+            const item = itemsById.get(id);
+            const existing = AF.getState().watchlist[id];
+            if (existing) {
+              AF.openDetailModal(item || id);
+            } else if (item) {
+              AF.upsertWatchlistItem(item, { status: 'Case Backlog' });
+              AF.toast(`Added "${AF.getDisplayTitle(item)}" to Case Backlog!`, 'success', 2000);
+            }
+          });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // TAB 1: RELEASES & NETWORKS
+      // ----------------------------------------------------------------------
+      function renderPlatformFilterBar() {
+        const bar = document.getElementById('platformFilterBar');
+        bar.innerHTML = `
+          <button type="button" class="pill ${activePlatform === 'all' ? 'active' : ''}" data-pf="all">All Networks</button>
+          <button type="button" class="pill ${activePlatform === 'free' ? 'active' : ''}" data-pf="free">★ Free / Podcasts</button>
+          ${AF.PLATFORM_CONFIG.map(p => `
+            <button type="button" class="pill ${activePlatform === p.id ? 'active' : ''}" data-pf="${p.id}">
+              <span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block;"></span>
+              ${AF.escapeHtml(p.name)}
+            </button>
+          `).join('')}
+        `;
+        bar.querySelectorAll('.pill').forEach(btn => {
+          btn.addEventListener('click', () => {
+            activePlatform = btn.dataset.pf;
+            renderPlatformFilterBar();
+            loadReleases();
+          });
+        });
+      }
+
+      async function loadReleases(forceRefresh = false) {
+        const grid = document.getElementById('releasesGrid');
+        const meta = document.getElementById('releasesMeta');
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="spinner"></span> Loading true crime docuseries, podcasts &amp; multi-network catalog...</div>`;
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        const start72h = nowSec - 72 * 3600;
+
+        const query = `query ($start: Int, $end: Int) { past72h { airingSchedules } activeOnas { media } catalog { media } }`;
+        try {
+          const cacheKey = forceRefresh ? null : `tc_releases_v1_${activePlatform}`;
+          const data = await AF.anilistQuery(query, { start: start72h, end: nowSec }, { cacheKey, ttl: AF.TTL_DYNAMIC });
+
+          const mergedMap = new Map();
+          for (const sched of (data?.past72h?.airingSchedules || [])) {
+            const m = sched.media;
+            if (!m) continue;
+            if (!mergedMap.has(m.id)) {
+              mergedMap.set(m.id, { ...m, _recentEp: sched.episode, _recentAirAt: sched.airingAt });
+            }
+          }
+          for (const m of (data?.catalog?.media || [])) {
+            if (!m) continue;
+            if (!mergedMap.has(m.id)) {
+              mergedMap.set(m.id, { ...m });
+            }
+          }
+
+          releasesCache = Array.from(mergedMap.values());
+          renderReleasesGrid();
+        } catch (err) {
+          meta.textContent = '';
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Failed to load cases: ${AF.escapeHtml(err.message)}</div>`;
+        }
+      }
+
+      function renderReleasesGrid() {
+        const grid = document.getElementById('releasesGrid');
+        const meta = document.getElementById('releasesMeta');
+        const usOnly = document.getElementById('releasesJpOnly')?.checked;
+
+        const filtered = releasesCache.filter(m => {
+          if (usOnly && m.countryOfOrigin && m.countryOfOrigin !== 'US') return false;
+          const extra = tmdbExtraByAnimeId.get(m.id) || [];
+          const platforms = AF.detectPlatforms(m, extra);
+          if (activePlatform === 'free') {
+            if (!AF.isFreeWithAds(m, platforms)) return false;
+          } else if (activePlatform !== 'all') {
+            if (!platforms.some(p => p.id === activePlatform)) return false;
+          }
+          const caseSt = AF.classifyDub(m).toLowerCase();
+          if (activeDubFilter === 'solved' && !caseSt.includes('solved') && !caseSt.includes('simul')) return false;
+          if (activeDubFilter === 'cold' && !caseSt.includes('cold') && !caseSt.includes('unsolved')) return false;
+          if (activeDubFilter === 'exonerated' && !caseSt.includes('exonerat')) return false;
+
+          if (activeLengthFilter === 'tv') {
+            if (!['DOCUSERIES', 'TV_SERIES', 'DRAMA_SERIES'].includes(m.format)) return false;
+          } else if (activeLengthFilter === 'shorts') {
+            if (m.format !== 'PODCAST') return false;
+          } else if (activeLengthFilter === 'movies') {
+            if (m.format !== 'FEATURE_DOC') return false;
+          }
+          return true;
+        });
+
+        meta.textContent = `Showing ${filtered.length} case dossiers (${activePlatform === 'all' ? 'All 12 Crime Networks & Podcasts' : activePlatform === 'free' ? 'Free Streaming & True Crime Podcasts' : AF.PLATFORM_BY_ID[activePlatform]?.name + ' Catalog'}${usOnly ? ' · US Cases only' : ''})`;
+
+        if (!filtered.length) {
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No case files matched the current network/case status filters. Try switching filters or adding custom overrides in the Case Detail Modal.</div>`;
+          return;
+        }
+
+        const byId = new Map(filtered.map(m => [m.id, m]));
+        grid.innerHTML = filtered.map(m => {
+          let airingBadge = `<span class="badge badge-muted">${AF.escapeHtml(m.format || 'DOSSIER')}</span>`;
+          if (m.status === 'RELEASING') {
+            airingBadge = `<span class="badge badge-rose">ACTIVE SERIES</span>`;
+          }
+          return renderAnimeCard(m, { airingBadge });
+        }).join('');
+
+        attachCardHandlers(grid, byId);
+      }
+
+      document.getElementById('dubFilterSelect').addEventListener('change', (ev) => {
+        activeDubFilter = ev.target.value;
+        renderReleasesGrid();
+      });
+      document.getElementById('lengthFilterSelect').addEventListener('change', (ev) => {
+        activeLengthFilter = ev.target.value;
+        renderReleasesGrid();
+      });
+      document.getElementById('releasesJpOnly').addEventListener('change', renderReleasesGrid);
+
+      document.getElementById('toggleCompactBtn').addEventListener('click', (ev) => {
+        const g = document.getElementById('releasesGrid');
+        const compact = g.classList.toggle('compact');
+        ev.currentTarget.classList.toggle('btn-primary', compact);
+      });
+
+      document.getElementById('refreshReleasesBtn').addEventListener('click', () => loadReleases(true));
+
+      document.getElementById('batchTmdbBtn').addEventListener('click', async () => {
+        const key = AF.getState().settings.tmdbKey;
+        if (!key) {
+          AF.toast('Add your TMDB v3 API key in the "Case Files & Sync" tab first to run US JustWatch enrichment.', 'warn', 4200);
+          switchTab('saved');
+          return;
+        }
+        const btn = document.getElementById('batchTmdbBtn');
+        btn.disabled = true;
+        btn.textContent = 'Enriching...';
+        let enriched = 0;
+        const subset = releasesCache.slice(0, 14);
+        await Promise.all(subset.map(async (m) => {
+          const tmdb = await AF.fetchTmdbUsProviders(AF.getDisplayTitle(m), m.seasonYear, key);
+          if (tmdb) {
+            tmdbExtraByAnimeId.set(m.id, [...tmdb.flatrate, ...tmdb.ads, ...tmdb.free]);
+            enriched++;
+          }
+        }));
+        btn.disabled = false;
+        btn.textContent = 'TMDB US Batch Enrich';
+        AF.toast(`Enriched ${enriched} case files with TMDB US JustWatch providers.`, 'success');
+        renderReleasesGrid();
+      });
+
+      // ----------------------------------------------------------------------
+      // TAB 2: 7-DAY SCHEDULE (Local Mon 00:00 -> Sun 23:59:59)
+      // ----------------------------------------------------------------------
+      function getLocalWeekBounds() {
+        const now = new Date();
+        const jsDay = now.getDay();
+        const mondayOffset = (jsDay + 6) % 7;
+        const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset, 0, 0, 0, 0);
+        const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6, 23, 59, 59, 999);
+        return {
+          startSec: Math.floor(mon.getTime() / 1000),
+          endSec: Math.floor(sun.getTime() / 1000),
+          monDate: mon,
+          sunDate: sun,
+          todayBucketIdx: mondayOffset
+        };
+      }
+
+      async function loadSchedule(forceRefresh = false) {
+        const grid = document.getElementById('scheduleGrid');
+        const label = document.getElementById('scheduleRangeLabel');
+        const { startSec, endSec, monDate, sunDate } = getLocalWeekBounds();
+
+        const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        label.textContent = `Local week: ${fmt(monDate)} – ${fmt(sunDate)} (Live TVMaze US Crime Schedule + Weekly Podcasts)`;
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="spinner"></span> Fetching 7-day crime broadcast &amp; podcast schedule...</div>`;
+
+        try {
+          const data = await AF.anilistQuery('query { airingSchedules }', { start: startSec, end: endSec }, {
+            cacheKey: forceRefresh ? null : `tc_sched_week_${startSec}`,
+            ttl: AF.TTL_DYNAMIC
+          });
+          scheduleCache = data?.p1?.airingSchedules || [];
+          renderScheduleGrid();
+        } catch (err) {
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Schedule error: ${AF.escapeHtml(err.message)}</div>`;
+        }
+      }
+
+      function renderScheduleGrid() {
+        const grid = document.getElementById('scheduleGrid');
+        const wlOnly = document.getElementById('scheduleWatchlistOnly').checked;
+        const usOnly = document.getElementById('scheduleJpOnly')?.checked;
+        const showDubs = document.getElementById('scheduleShowDubs')?.checked;
+        const state = AF.getState();
+        const wl = state.watchlist || {};
+        const { todayBucketIdx } = getLocalWeekBounds();
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const dayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const buckets = Array.from({ length: 7 }, () => []);
+        const nowSec = Math.floor(Date.now() / 1000);
+        const mediaById = new Map();
+
+        for (const item of scheduleCache) {
+          if (!item.media) continue;
+          if (usOnly && item.media.countryOfOrigin && item.media.countryOfOrigin !== 'US') continue;
+          if (wlOnly && !wl[item.media.id]) continue;
+          const dt = new Date(item.airingAt * 1000);
+          const idx = (dt.getDay() + 6) % 7;
+          const dubInfo = AF.getDubTrackInfo(item.media, item.episode);
+
+          buckets[idx].push({
+            ...item,
+            _track: dubInfo.isSimuldub ? 'simuldub' : 'sub',
+            _dubInfo: dubInfo
+          });
+
+          if (showDubs && dubInfo.dubEp && !dubInfo.isSimuldub && dubInfo.dubLag > 0) {
+            const dubDayIdx = (dubInfo.dubDay !== null && !Number.isNaN(dubInfo.dubDay)) ? dubInfo.dubDay : idx;
+            buckets[dubDayIdx].push({
+              ...item,
+              episode: dubInfo.dubEp,
+              _subEp: item.episode,
+              _track: 'dub',
+              _dubInfo: dubInfo
+            });
+          }
+
+          mediaById.set(item.media.id, item.media);
+        }
+
+        const jumpBar = document.getElementById('scheduleDayJumpBar');
+        if (jumpBar) {
+          jumpBar.innerHTML = `
+            <span style="font-size:11.5px;color:var(--text-dim);font-weight:700;margin-right:4px;">JUMP TO DAY:</span>
+            ${dayNames.map((name, idx) => {
+              const isToday = idx === todayBucketIdx;
+              return `
+                <button type="button" class="pill ${isToday ? 'active' : ''}" data-jump-day="${idx}">
+                  ${dayShort[idx]}${isToday ? ' (Today)' : ''}
+                  <span class="badge badge-muted">${buckets[idx].length}</span>
+                </button>
+              `;
+            }).join('')}
+          `;
+          jumpBar.querySelectorAll('[data-jump-day]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const col = grid.querySelector(`[data-day-col="${btn.dataset.jumpDay}"]`);
+              if (col) col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            });
+          });
+        }
+
+        grid.innerHTML = dayNames.map((name, idx) => {
+          const list = buckets[idx];
+          const isToday = idx === todayBucketIdx;
+          return `
+            <div class="schedule-col ${isToday ? 'today' : ''}" data-day-col="${idx}">
+              <div class="schedule-col-header">
+                <strong style="font-size:13px;">${name}${isToday ? ' · Today' : ''}</strong>
+                <span class="badge ${isToday ? 'badge-accent' : 'badge-muted'}">${list.length}</span>
+              </div>
+              <div class="schedule-list">
+                ${list.length ? list.map(s => {
+                  const m = s.media;
+                  const dt = new Date(s.airingAt * 1000);
+                  const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const aired = s.airingAt <= nowSec;
+                  const rel = AF.formatRelativeCountdown(s.airingAt);
+                  const inWl = Boolean(wl[m.id]);
+                  const isDubRow = s._track === 'dub';
+                  const di = s._dubInfo;
+                  const trackBadge = isDubRow
+                    ? `<span class="badge badge-cyan">STREAM · Ep ${s.episode}</span>`
+                    : s._track === 'simuldub'
+                      ? `<span class="badge badge-emerald">SIMUL · Ep ${s.episode}</span>`
+                      : `<span class="badge badge-muted">${m.format === 'PODCAST' ? 'POD' : 'TV'} · Ep ${s.episode}</span>`;
+                  return `
+                    <div class="schedule-item ${isDubRow ? 'dub-release' : ''}" data-anime-id="${m.id}" tabindex="0">
+                      <img src="${AF.escapeHtml(AF.getCover(m))}" alt="" loading="lazy">
+                      <div class="schedule-item-info">
+                        <div class="schedule-item-title">${AF.escapeHtml(AF.getDisplayTitle(m))}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${isDubRow ? `−${di.dubLag}w lag` : timeStr}</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                          ${trackBadge}
+                          ${!isDubRow ? `<span class="badge ${aired ? 'badge-emerald' : 'badge-amber'}">${aired ? '✓ ' + rel : rel}</span>` : ''}
+                          ${inWl ? `<span class="badge badge-accent">★ Case File</span>` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('') : `<div style="font-size:12px;color:var(--text-dim);padding:12px;text-align:center;">No broadcasts</div>`}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        grid.querySelectorAll('.schedule-item').forEach(el => {
+          const open = () => AF.openDetailModal(mediaById.get(Number(el.dataset.animeId)) || Number(el.dataset.animeId));
+          el.addEventListener('click', open);
+          el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
+        });
+      }
+
+      document.getElementById('scheduleShowDubs').addEventListener('change', renderScheduleGrid);
+      document.getElementById('scheduleWatchlistOnly').addEventListener('change', renderScheduleGrid);
+      document.getElementById('scheduleJpOnly').addEventListener('change', renderScheduleGrid);
+      document.getElementById('refreshScheduleBtn').addEventListener('click', () => loadSchedule(true));
+
+      // ----------------------------------------------------------------------
+      // TAB 3: SAVED CASE FILES & SYNC
+      // ----------------------------------------------------------------------
+      async function refreshCacheStatsUI() {
+        const stats = await AF.cacheStats();
+        const el = document.getElementById('cacheStatsLabel');
+        if (el) {
+          el.textContent = `IndexedDB (TrueCrimeFinderCacheDB v2): ${stats.apiCount} cached API responses · ${stats.vectorCount} MiniLM vectors`;
+        }
+      }
+
+      function renderSavedTab() {
+        const state = AF.getState();
+        const items = Object.values(state.watchlist || {});
+        const counts = { All: items.length };
+        AF.WATCHLIST_STATUSES.forEach(st => { counts[st] = 0; });
+        items.forEach(it => {
+          const st = AF.normalizeStatus(it.status);
+          counts[st] = (counts[st] || 0) + 1;
+        });
+
+        document.getElementById('watchlistSummary').textContent =
+          `${items.length} case files saved · Investigating: ${counts['Investigating']} · Closed: ${counts['Closed / Watched']} · Cold / On Hold: ${counts['Cold / On Hold']} · Backlog: ${counts['Case Backlog']}`;
+
+        const pillsEl = document.getElementById('wlStatusPills');
+        pillsEl.innerHTML = ['All', ...AF.WATCHLIST_STATUSES].map(st => `
+          <button type="button" class="pill ${wlFilterStatus === st ? 'active' : ''}" data-st="${st}">
+            ${st} <span class="badge badge-muted">${counts[st] || 0}</span>
+          </button>
+        `).join('');
+        pillsEl.querySelectorAll('.pill').forEach(btn => {
+          btn.addEventListener('click', () => {
+            wlFilterStatus = btn.dataset.st;
+            renderSavedTab();
+          });
+        });
+
+        const sortBy = document.getElementById('wlSortSelect').value;
+        let filtered = wlFilterStatus === 'All'
+          ? items
+          : items.filter(it => AF.normalizeStatus(it.status) === wlFilterStatus);
+
+        filtered.sort((a, b) => {
+          if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+          if (sortBy === 'score') return (b.averageScore || 0) - (a.averageScore || 0);
+          if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+
+        const grid = document.getElementById('watchlistGrid');
+        if (!filtered.length) {
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No case files in "${AF.escapeHtml(wlFilterStatus)}". Click any case card or use the "Import Dossier Pack" button below to populate your Case Files.</div>`;
+        } else {
+          const byId = new Map(filtered.map(it => [it.id, it]));
+          grid.innerHTML = filtered.map(it => {
+            const epText = `${it.progress || 0}${it.episodes ? ' / ' + it.episodes : ''} eps`;
+            const extraBadge = it.rating ? `<span class="badge badge-amber">My ★ ${it.rating}/10</span>` : '';
+            const controls = `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto;padding-top:6px;">
+                <span style="font-size:11.5px;color:var(--text-muted);">${epText}</span>
+                <div style="display:flex;gap:4px;">
+                  <button type="button" class="btn btn-xs btn-emerald wl-inc-btn" data-id="${it.id}">+1 Ep</button>
+                  <a class="btn btn-xs btn-cyan" href="./vibe-graph.html?seed=${it.id}">Graph</a>
+                </div>
+              </div>
+            `;
+            return renderAnimeCard(it, { extraBadge, watchlistControls: controls });
+          }).join('');
+          attachCardHandlers(grid, byId);
+          grid.querySelectorAll('.wl-inc-btn').forEach(btn => {
+            btn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const it = byId.get(Number(btn.dataset.id));
+              if (!it) return;
+              AF.upsertWatchlistItem(it, { progress: (it.progress || 0) + 1 });
+              AF.toast(`${it.title}: Ep ${(it.progress || 0) + 1}`, 'success', 1800);
+            });
+          });
+        }
+
+        const hasToken = Boolean(state.settings.gistToken);
+        const hasGist = Boolean(state.settings.gistToken && state.settings.gistId);
+        const setValIfNotFocused = (id, val) => {
+          const el = document.getElementById(id);
+          if (el && document.activeElement !== el) el.value = val;
+        };
+        setValIfNotFocused('gistTokenInput', state.settings.gistToken || '');
+        setValIfNotFocused('gistIdInput', state.settings.gistId || '');
+        document.getElementById('gistAutoSyncCheck').checked = state.settings.gistAutoSync !== false;
+        setValIfNotFocused('tmdbKeyInput', state.settings.tmdbKey || '');
+        setValIfNotFocused('anilistImportUser', state.settings.anilistUsername || 'starter');
+
+        document.getElementById('wizStep1').classList.toggle('done', hasToken);
+        document.getElementById('wizStep2').classList.toggle('done', hasGist);
+        document.getElementById('wizStep3').classList.toggle('done', hasGist);
+        document.getElementById('disconnectGistBtn').hidden = !hasGist;
+
+        const badge = document.getElementById('gistStatusBadge');
+        const info = document.getElementById('gistConnectedInfo');
+        if (hasGist) {
+          const gistUrl = AF.safeUrl(state.settings.gistUrl || `https://gist.github.com/${encodeURIComponent(state.settings.gistId)}`, 'https://gist.github.com');
+          const revUrl = AF.safeUrl(`${gistUrl}/revisions`, 'https://gist.github.com');
+          badge.className = 'badge badge-emerald';
+          badge.textContent = state.settings.gistUser ? `Connected: @${state.settings.gistUser}` : 'Permanent Gist Connected';
+          info.innerHTML = `
+            Synced to <code>truecrimefinder-sync.json</code> (${Object.keys(state.watchlist).length} case files · ${Object.keys(state.overrides || {}).length} overrides · ${Object.keys(state.tombstones || {}).length} tombstones).
+            <div class="meta-row" style="margin-top:6px;">
+              <a class="btn btn-xs btn-cyan" href="${AF.escapeHtml(gistUrl)}" target="_blank" rel="noopener noreferrer">View Private Gist ↗</a>
+              <a class="btn btn-xs" href="${AF.escapeHtml(revUrl)}" target="_blank" rel="noopener noreferrer">Revision History ↗</a>
+            </div>
+          `;
+        } else {
+          badge.className = 'badge badge-cyan';
+          badge.textContent = 'Local Storage Only';
+          info.textContent = 'Not connected yet. Every push keeps full Git revision history on GitHub.';
+        }
+
+        document.getElementById('gistLastSyncLabel').textContent = state.settings.lastGistSync
+          ? `Last cloud sync: ${new Date(state.settings.lastGistSync).toLocaleString()}`
+          : 'Not yet synced with a Private GitHub Gist.';
+        refreshCacheStatsUI();
+      }
+
+      document.getElementById('wlSortSelect').addEventListener('change', renderSavedTab);
+
+      document.getElementById('connectGistWizardBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('connectGistWizardBtn');
+        const token = document.getElementById('gistTokenInput').value.trim();
+        if (!token) {
+          AF.toast('Step 1: Open the GitHub Token Page, generate a gist-scoped token, and paste it here.', 'warn');
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Connecting...';
+        try {
+          const res = await AF.gistConnectAndSetup(token, { autoCreate: true });
+          if (res.mode === 'connected_existing') {
+            AF.toast(`Connected to @${res.login}'s existing Private Gist & merged ${res.count} case files!`, 'success', 4500);
+          } else {
+            AF.toast(`Created Private Gist for @${res.login} & backed up ${res.count} case files!`, 'success', 4500);
+          }
+          renderSavedTab();
+        } catch (err) {
+          AF.toast(err.message, 'error', 4500);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '⚡ Connect & Auto-Setup Private Gist';
+        }
+      });
+
+      const syncGistInputsToSettings = () => {
+        AF.updateSettings({
+          gistToken: document.getElementById('gistTokenInput').value.trim(),
+          gistId: document.getElementById('gistIdInput').value.trim(),
+          gistAutoSync: document.getElementById('gistAutoSyncCheck').checked
+        });
+      };
+
+      ['gistTokenInput', 'gistIdInput'].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('change', syncGistInputsToSettings);
+        el.addEventListener('blur', syncGistInputsToSettings);
+      });
+      document.getElementById('gistAutoSyncCheck').addEventListener('change', syncGistInputsToSettings);
+      document.getElementById('tmdbKeyInput').addEventListener('change', () => {
+        AF.updateSettings({ tmdbKey: document.getElementById('tmdbKeyInput').value.trim() });
+      });
+      document.getElementById('anilistImportUser').addEventListener('change', () => {
+        AF.updateSettings({ anilistUsername: document.getElementById('anilistImportUser').value.trim() });
+      });
+
+      document.getElementById('saveGistConfigBtn').addEventListener('click', () => {
+        syncGistInputsToSettings();
+        AF.toast('Saved GitHub Gist configuration.', 'success');
+        renderSavedTab();
+      });
+
+      document.getElementById('disconnectGistBtn').addEventListener('click', () => {
+        AF.gistDisconnect();
+        AF.toast('Disconnected Private Gist (local Case Files preserved).', 'info');
+        renderSavedTab();
+      });
+
+      document.getElementById('pullGistBtn').addEventListener('click', async () => {
+        syncGistInputsToSettings();
+        await AF.gistPull();
+        renderSavedTab();
+      });
+      document.getElementById('pushGistBtn').addEventListener('click', async () => {
+        syncGistInputsToSettings();
+        await AF.gistPush();
+        renderSavedTab();
+      });
+
+      document.getElementById('importAnilistBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('importAnilistBtn');
+        const user = document.getElementById('anilistImportUser').value.trim();
+        if (!user) return AF.toast('Enter a dossier pack keyword (e.g. starter, Cold Case, HBO).', 'warn');
+        btn.disabled = true;
+        btn.textContent = 'Importing...';
+        try {
+          const count = await AF.importAniListWatchlist(user);
+          AF.toast(`Imported ${count} true crime case files for "${user}"!`, 'success');
+          renderSavedTab();
+        } catch (err) {
+          AF.toast(`Import failed: ${err.message}`, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Import Dossier Pack';
+        }
+      });
+
+      document.getElementById('saveTmdbKeyBtn').addEventListener('click', () => {
+        AF.updateSettings({ tmdbKey: document.getElementById('tmdbKeyInput').value.trim() });
+        AF.toast('Saved TMDB API key locally.', 'success');
+      });
+
+      document.getElementById('clearApiCacheBtn').addEventListener('click', async () => {
+        await AF.cacheClear(false);
+        await refreshCacheStatsUI();
+        AF.toast('Cleared API cache.', 'info');
+      });
+
+      document.getElementById('clearAllCacheBtn').addEventListener('click', async () => {
+        await AF.cacheClear(true);
+        await refreshCacheStatsUI();
+        AF.toast('Cleared API cache and MiniLM vector store.', 'warn');
+      });
+
+      document.getElementById('genSyncCodeBtn').addEventListener('click', () => {
+        document.getElementById('syncCodeOutput').value = AF.generateSyncCode();
+        AF.toast('Generated portable UTF-8 Sync Code.', 'success');
+      });
+
+      document.getElementById('copySyncUrlBtn').addEventListener('click', async () => {
+        const code = AF.generateSyncCode();
+        const url = `${window.location.origin}${window.location.pathname}#sync=${encodeURIComponent(code)}`;
+        document.getElementById('syncCodeOutput').value = url;
+        try {
+          await navigator.clipboard.writeText(url);
+          AF.toast('Copied #sync= URL to clipboard!', 'success');
+        } catch {
+          AF.toast('Share URL placed in text box (copy manually).', 'info');
+        }
+      });
+
+      document.getElementById('applySyncCodeBtn').addEventListener('click', () => {
+        const raw = document.getElementById('syncCodeInput').value.trim();
+        if (!raw) return AF.toast('Paste a Sync Code first.', 'warn');
+        try {
+          const code = raw.includes('#sync=') ? decodeURIComponent(raw.split('#sync=')[1]) : raw;
+          const merged = AF.applySyncCode(code);
+          AF.toast(`Merged ${Object.keys(merged.watchlist).length} case files!`, 'success');
+          document.getElementById('syncCodeInput').value = '';
+          renderSavedTab();
+        } catch (err) {
+          AF.toast(`Invalid Sync Code: ${err.message}`, 'error');
+        }
+      });
+
+      document.getElementById('exportJsonBtn').addEventListener('click', () => {
+        const safePayload = AF.buildPortableSyncPayload(AF.getState(), false);
+        const blob = new Blob([JSON.stringify(safePayload, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `truecrimefinder-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        AF.toast('Exported portable JSON backup (API tokens excluded for security).', 'success');
+      });
+
+      document.getElementById('importJsonFile').addEventListener('change', async (ev) => {
+        const file = ev.target.files?.[0];
+        if (!file) return;
+        try {
+          const parsed = JSON.parse(await file.text());
+          const merged = AF.mergeRemotePayload(parsed);
+          AF.saveState(merged, { triggerGist: true });
+          AF.toast(`Imported backup (${Object.keys(merged.watchlist).length} case files).`, 'success');
+          renderSavedTab();
+        } catch (err) {
+          AF.toast(`JSON import failed: ${err.message}`, 'error');
+        }
+        ev.target.value = '';
+      });
+
+      // ----------------------------------------------------------------------
+      // TAB 4: RADAR (Active Investigations + True Crime News RSS + YouTube Hunter)
+      // ----------------------------------------------------------------------
+      async function loadUpcomingRadar() {
+        const grid = document.getElementById('upcomingGrid');
+        const list = AF.CANONICAL_DOSSIER_LIST.slice(0, 16);
+        const byId = new Map(list.map(m => [m.id, m]));
+        grid.innerHTML = list.map(m => {
+          const caseSt = AF.classifyDub(m);
+          return renderAnimeCard(m, { airingBadge: `<span class="badge badge-purple">${AF.escapeHtml(caseSt)}</span>` });
+        }).join('');
+        attachCardHandlers(grid, byId);
+      }
+
+      async function loadAnnNews(forceRefresh = false) {
+        const host = document.getElementById('annNewsList');
+        host.innerHTML = `<div class="empty-state"><span class="spinner"></span> Fetching True Crime &amp; Criminal Justice RSS wire...</div>`;
+        const cacheKey = 'radar_tc_news_rss_v1';
+        let items = forceRefresh ? null : await AF.cacheGet(cacheKey);
+
+        if (!items) {
+          const rssUrl = 'https://www.themarshallproject.org/rss/recent.rss';
+          const fetchTimed = async (url, ms = 4200) => {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            try { return await fetch(url, { signal: ctrl.signal }); } finally { clearTimeout(t); }
+          };
+          const parseXmlItems = (xmlText) => {
+            const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
+            const nodes = Array.from(xml.querySelectorAll('item')).slice(0, 14);
+            return nodes.length ? nodes.map(n => ({
+              title: n.querySelector('title')?.textContent || 'Investigative Report',
+              link: n.querySelector('link')?.textContent || 'https://www.themarshallproject.org/',
+              pubDate: n.querySelector('pubDate')?.textContent || ''
+            })) : null;
+          };
+
+          try {
+            const res = await fetchTimed(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`);
+            if (res.ok) {
+              const json = await res.json();
+              if (Array.isArray(json.items) && json.items.length) {
+                items = json.items.slice(0, 14).map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate }));
+              }
+            }
+          } catch {}
+
+          if (!items) {
+            try {
+              const res = await fetchTimed(`https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`);
+              if (res.ok) items = parseXmlItems(await res.text());
+            } catch {}
+          }
+
+          if (!items) {
+            // Curated investigative wire fallback so the panel is always informative
+            items = [
+              { title: 'Forensic Genealogy & Cold Case DNA Breakthroughs — Case Tracker', link: 'https://www.themarshallproject.org/records/3382-genetic-genealogy', pubDate: 'Forensic DNA Wire' },
+              { title: 'National Registry of Exonerations — Wrongful Conviction Dossiers', link: 'https://www.law.umich.edu/special/exoneration/Pages/about.aspx', pubDate: 'Innocence & Exoneration Archive' },
+              { title: 'Innocence Project — DNA Exonerations & Case Files', link: 'https://innocenceproject.org/all-cases/', pubDate: 'Case File Repository' },
+              { title: 'CBS 48 Hours — Latest Crime Investigations & Case Updates', link: 'https://www.cbsnews.com/48-hours/', pubDate: 'CBS Investigative Desk' },
+              { title: 'NBC Dateline — True Crime Case Spotlights & Broadcast Archive', link: 'https://www.nbcnews.com/dateline', pubDate: 'Dateline NBC Wire' },
+              { title: 'Court TV — Live Criminal Trials & Verdict Coverage', link: 'https://www.courttv.com/', pubDate: 'Live Courtroom Wire' }
+            ];
+          }
+
+          if (items?.length) await AF.cacheSet(cacheKey, items, AF.TTL_DYNAMIC);
+        }
+
+        host.innerHTML = items.map(it => `
+          <a href="${AF.escapeHtml(AF.safeUrl(it.link, 'https://www.themarshallproject.org/'))}" target="_blank" rel="noopener noreferrer" style="display:block;padding:10px;border-radius:10px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;">
+            <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:3px;">${AF.escapeHtml(it.title)}</div>
+            <div style="font-size:11px;color:var(--text-dim);">${AF.escapeHtml(it.pubDate)}</div>
+          </a>
+        `).join('');
+      }
+
+      async function huntYouTube(customQuery) {
+        const input = document.getElementById('ytSearchInput');
+        const q = (customQuery ?? input.value).trim() || 'true crime documentary official trailer';
+        input.value = q;
+        const directUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+        document.getElementById('ytDirectLink').href = directUrl;
+
+        const host = document.getElementById('ytResultsList');
+        host.innerHTML = `<div class="empty-state"><span class="spinner"></span> Fetching official YouTube true crime trailers &amp; documentaries...</div>`;
+
+        const collected = [];
+        const seenUrls = new Set();
+
+        for (const m of AF.CANONICAL_DOSSIER_LIST) {
+          if (m?.trailer?.site === 'youtube' && m.trailer.id) {
+            const url = `https://www.youtube.com/watch?v=${m.trailer.id}`;
+            if (seenUrls.has(url)) continue;
+            seenUrls.add(url);
+            collected.push({
+              title: `${AF.getDisplayTitle(m)} — Official Documentary Trailer`,
+              uploader: `${m.studios?.nodes?.[0]?.name || 'Network'} · ${m.seasonYear || ''}`.trim(),
+              thumb: m.trailer.thumbnail || `https://i.ytimg.com/vi/${m.trailer.id}/hqdefault.jpg`,
+              url,
+              duration: 'Official Trailer'
+            });
+          }
+        }
+
+        host.innerHTML = collected.slice(0, 12).map(v => {
+          const safeHref = AF.safeUrl(v.url, 'https://www.youtube.com');
+          const safeThumb = AF.safeUrl(v.thumb, '');
+          return `
+          <a href="${AF.escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" style="display:flex;gap:10px;padding:8px;border-radius:10px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;align-items:center;">
+            ${safeThumb ? `<img src="${AF.escapeHtml(safeThumb)}" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:6px;flex-shrink:0;">` : ''}
+            <div style="min-width:0;flex:1;">
+              <div style="font-weight:700;font-size:12.5px;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${AF.escapeHtml(v.title)}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${AF.escapeHtml(v.uploader)} · ${AF.escapeHtml(v.duration)}</div>
+            </div>
+          </a>
+        `;
+        }).join('');
+      }
+
+      document.getElementById('refreshUpcomingBtn').addEventListener('click', () => loadUpcomingRadar());
+      document.getElementById('refreshAnnBtn').addEventListener('click', () => loadAnnNews(true));
+      document.getElementById('ytSearchBtn').addEventListener('click', () => huntYouTube());
+      document.getElementById('ytSearchInput').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') huntYouTube(); });
+      document.querySelectorAll('.yt-preset').forEach(btn => {
+        btn.addEventListener('click', () => huntYouTube(btn.dataset.q));
+      });
+
+      // ----------------------------------------------------------------------
+      // TAB 5: ARCHIVES (By Year/Decade 1970–2026 & By Network/Producer)
+      // ----------------------------------------------------------------------
+      let activeArchiveDecade = 2010; // default to rich 2010s true crime boom decade
+
+      function initArchiveControls() {
+        const yrSel = document.getElementById('archiveYearSelect');
+        let opts = '';
+        for (let y = 2026; y >= 1970; y--) {
+          opts += `<option value="${y}" ${y === 2020 ? 'selected' : ''}>${y}</option>`;
+        }
+        yrSel.innerHTML = opts;
+        yrSel.addEventListener('change', () => {
+          activeArchiveDecade = null;
+          document.querySelectorAll('.decade-pill').forEach(b => b.classList.remove('active'));
+          loadYearArchive();
+        });
+
+        const decBar = document.getElementById('decadeQuickPills');
+        decBar.innerHTML = [2020, 2010, 2000, 1990, 1980, 1970].map(d =>
+          `<button type="button" class="pill decade-pill ${d === 2010 ? 'active' : ''}" data-decade="${d}">Full ${d}s Era</button>`
+        ).join('');
+        decBar.querySelectorAll('.decade-pill').forEach(btn => {
+          btn.addEventListener('click', () => {
+            activeArchiveDecade = Number(btn.dataset.decade);
+            decBar.querySelectorAll('.decade-pill').forEach(b => b.classList.toggle('active', b === btn));
+            loadYearArchive();
+          });
+        });
+
+        const stBar = document.getElementById('curatedStudiosBar');
+        stBar.innerHTML = CURATED_STUDIOS.map(s => `<button type="button" class="pill studio-pill" data-studio="${AF.escapeHtml(s)}">${AF.escapeHtml(s)}</button>`).join('');
+        stBar.querySelectorAll('.studio-pill').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.getElementById('studioSearchInput').value = btn.dataset.studio;
+            loadStudioArchive(btn.dataset.studio);
+          });
+        });
+      }
+
+      function setArchiveMode(mode) {
+        archiveMode = mode;
+        document.getElementById('archiveModeYear').classList.toggle('active', mode === 'year');
+        document.getElementById('archiveModeStudio').classList.toggle('active', mode === 'studio');
+        document.getElementById('archiveYearControls').hidden = mode !== 'year';
+        document.getElementById('archiveStudioControls').hidden = mode !== 'studio';
+        if (mode === 'year') loadYearArchive();
+        else loadStudioArchive(document.getElementById('studioSearchInput').value.trim() || 'HBO Documentary Films');
+      }
+
+      document.getElementById('archiveModeYear').addEventListener('click', () => setArchiveMode('year'));
+      document.getElementById('archiveModeStudio').addEventListener('click', () => setArchiveMode('studio'));
+      document.getElementById('loadYearArchiveBtn').addEventListener('click', loadYearArchive);
+      document.getElementById('searchStudioBtn').addEventListener('click', () => {
+        const q = document.getElementById('studioSearchInput').value.trim();
+        if (q) loadStudioArchive(q);
+      });
+      document.getElementById('studioSearchInput').addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') {
+          const q = ev.target.value.trim();
+          if (q) loadStudioArchive(q);
+        }
+      });
+
+      async function loadYearArchive() {
+        const year = Number(document.getElementById('archiveYearSelect').value) || 2020;
+        const format = document.getElementById('archiveFormatSelect').value;
+        const sort = document.getElementById('archiveSortSelect').value;
+        const grid = document.getElementById('archivesGrid');
+        const meta = document.getElementById('archivesMeta');
+
+        const startYr = activeArchiveDecade || year;
+        const endYr = activeArchiveDecade ? Math.min(2026, activeArchiveDecade + 9) : year;
+        const rangeLabel = activeArchiveDecade ? `${startYr}s (${startYr}–${endYr})` : String(year);
+        const eraTag = activeArchiveDecade === 1970 ? '1970s Era' : activeArchiveDecade === 1980 ? '1980s Era' : activeArchiveDecade === 1990 ? '1990s Era' : null;
+
+        let list = AF.CANONICAL_DOSSIER_LIST.filter(m => {
+          const yrMatch = (m.seasonYear >= startYr && m.seasonYear <= endYr) ||
+            (eraTag && (m.tags || []).some(t => t.name === eraTag));
+          if (!yrMatch) return false;
+          if (format && m.format !== format) return false;
+          return true;
+        });
+
+        const entryOnly = document.getElementById('archiveEntryPointsOnly')?.checked;
+        if (entryOnly) list = list.filter(m => !AF.isSequelOrRecap(m));
+
+        list.sort((a, b) => sort === 'POPULARITY_DESC'
+          ? (b.popularity || 0) - (a.popularity || 0)
+          : (b.averageScore || 0) - (a.averageScore || 0));
+
+        meta.textContent = `Archive: ${rangeLabel}${format ? ' · ' + format : ''}${entryOnly ? ' · Entry Points Only' : ''} — ${list.length} case dossiers`;
+        const byId = new Map(list.map(m => [m.id, m]));
+        grid.innerHTML = list.length
+          ? list.map(m => renderAnimeCard(m)).join('')
+          : `<div class="empty-state" style="grid-column:1/-1;">No case files indexed for ${rangeLabel}. Try clicking one of the Full Decade Era pills above.</div>`;
+        attachCardHandlers(grid, byId);
+      }
+
+      async function loadStudioArchive(studioName) {
+        const grid = document.getElementById('archivesGrid');
+        const meta = document.getElementById('archivesMeta');
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="spinner"></span> Fetching case files for "${AF.escapeHtml(studioName)}"...</div>`;
+
+        try {
+          const data = await AF.anilistQuery('query { Studio(search: $search) }', { search: studioName });
+          const studio = data?.Studio;
+          if (!studio) {
+            meta.textContent = '';
+            grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Network or producer "${AF.escapeHtml(studioName)}" not found.</div>`;
+            return;
+          }
+          let mainList = (studio.p1?.edges || []).map(e => e.node).filter(Boolean);
+          const entryOnly = document.getElementById('archiveEntryPointsOnly')?.checked;
+          if (entryOnly) mainList = mainList.filter(m => !AF.isSequelOrRecap(m));
+
+          meta.textContent = `Network / Producer: ${studio.name} — ${mainList.length} case dossiers`;
+          const byId = new Map(mainList.map(m => [m.id, m]));
+          grid.innerHTML = mainList.length
+            ? mainList.map(m => renderAnimeCard(m)).join('')
+            : `<div class="empty-state" style="grid-column:1/-1;">No case files found for ${AF.escapeHtml(studio.name)}.</div>`;
+          attachCardHandlers(grid, byId);
+        } catch (err) {
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Producer query failed: ${AF.escapeHtml(err.message)}</div>`;
+        }
+      }
+
+      AF.onStateChange(() => {
+        if (activeTab === 'saved') renderSavedTab();
+        else if (activeTab === 'releases' && releasesCache.length) renderReleasesGrid();
+        else if (activeTab === 'schedule' && scheduleCache.length) renderScheduleGrid();
+      });
+
+      document.getElementById('archiveEntryPointsOnly').addEventListener('change', () => {
+        if (archiveMode === 'year') loadYearArchive();
+        else loadStudioArchive(document.getElementById('studioSearchInput').value.trim() || 'HBO Documentary Films');
+      });
+
+      // Boot sequence
+      renderPlatformFilterBar();
+      initArchiveControls();
+      const params = new URLSearchParams(window.location.search);
+      const deepStudio = params.get('studio');
+      const initialTab = deepStudio
+        ? 'archives'
+        : (['releases', 'schedule', 'saved', 'radar', 'archives'].includes(params.get('tab')) ? params.get('tab') : 'releases');
+      switchTab(initialTab);
+
+      if (deepStudio) {
+        document.getElementById('studioSearchInput').value = deepStudio;
+        setArchiveMode('studio');
+      }
+
+      const deepAnimeId = Number(params.get('anime'));
+      if (deepAnimeId) {
+        AF.openDetailModal(deepAnimeId);
+      }
+    })();
+  </script>
+</body>
+</html>

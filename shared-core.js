@@ -152,12 +152,22 @@
       freeWithAds: true
     },
     {
+      id: 'youtube',
+      name: 'YouTube',
+      licensedBy: 'YouTube',
+      licensedByValues: ['YouTube'],
+      aliases: ['youtube', 'youtu.be'],
+      domains: ['youtube.com', 'youtu.be'],
+      color: '#f87171',
+      freeWithAds: true
+    },
+    {
       id: 'podcasts',
       name: 'Podcasts / Audio',
       licensedBy: 'Apple Podcasts',
-      licensedByValues: ['Apple Podcasts', 'Spotify', 'Serial Productions', 'Wondery', 'PRX', 'NHPR', 'APM Reports', 'YouTube'],
-      aliases: ['podcast', 'apple podcasts', 'spotify', 'wondery', 'serial', 'prx', 'youtube', 'nhpr', 'apm'],
-      domains: ['podcasts.apple.com', 'open.spotify.com', 'youtube.com', 'youtu.be'],
+      licensedByValues: ['Apple Podcasts', 'Spotify', 'Serial Productions', 'Wondery', 'PRX', 'NHPR', 'APM Reports'],
+      aliases: ['podcast', 'apple podcasts', 'spotify', 'wondery', 'serial', 'prx', 'nhpr', 'apm'],
+      domains: ['podcasts.apple.com', 'open.spotify.com'],
       color: '#10b981',
       freeWithAds: true
     }
@@ -2658,23 +2668,52 @@
     }
     // 4. Studio / Network Archive query
     else if (qStr.includes('Studio(search:')) {
-      const sTerm = String(variables.search || '').toLowerCase();
-      const matched = CANONICAL_DOSSIER_LIST.filter(m => {
-        const st = (m.studios?.nodes?.[0]?.name || '').toLowerCase();
-        const plats = (m._matchedPlatforms || []).map(pid => (PLATFORM_BY_ID[pid]?.name || '').toLowerCase());
-        return st.includes(sTerm) || sTerm.includes(st) || plats.some(p => p.includes(sTerm) || sTerm.includes(p));
-      });
-      const liveTv = await fetchLiveTvMazeCrimeShows(variables.search, 12);
-      const all = [...matched, ...liveTv];
-      result = {
-        Studio: all.length ? {
-          id: 900,
-          name: variables.search,
-          favourites: 14200,
-          p1: { edges: all.map(node => ({ isMainStudio: true, node })) },
-          p2: { edges: [] }
-        } : null
-      };
+      const sTerm = String(variables.search || '').trim().toLowerCase();
+      if (!sTerm) {
+        result = { Studio: null };
+      } else {
+        // 1. First match canonical shows whose actual producer/studio matches sTerm
+        let matched = CANONICAL_DOSSIER_LIST.filter(m => {
+          const studios = (m.studios?.nodes || []).map(s => String(s?.name || '').trim().toLowerCase()).filter(Boolean);
+          return studios.some(st => st === sTerm || st.includes(sTerm) || sTerm.includes(st));
+        });
+
+        // 2. Only fall back to platform matching if sTerm is a distribution network name (e.g. "Peacock", "Hulu", "Tubi") with no direct studio match
+        if (!matched.length) {
+          matched = CANONICAL_DOSSIER_LIST.filter(m => {
+            const plats = (m._matchedPlatforms || [])
+              .map(pid => String(PLATFORM_BY_ID[pid]?.name || '').trim().toLowerCase())
+              .filter(Boolean);
+            return plats.some(p => p === sTerm || p.includes(sTerm) || sTerm.includes(p));
+          });
+        }
+
+        // 3. Only include live TVMaze shows whose actual TVMaze network/webChannel matches sTerm
+        const liveTvRaw = await fetchLiveTvMazeCrimeShows(variables.search, 12);
+        const liveTv = liveTvRaw.filter(m => {
+          const net = String(m.studios?.nodes?.[0]?.name || '').trim().toLowerCase();
+          return net && (net === sTerm || net.includes(sTerm) || sTerm.includes(net));
+        });
+
+        const seenTitles = new Set();
+        const all = [];
+        for (const node of [...matched, ...liveTv]) {
+          const tKey = getDisplayTitle(node).toLowerCase();
+          if (seenTitles.has(tKey)) continue;
+          seenTitles.add(tKey);
+          all.push(node);
+        }
+
+        result = {
+          Studio: all.length ? {
+            id: 900,
+            name: variables.search,
+            favourites: 14200,
+            p1: { edges: all.map(node => ({ isMainStudio: true, node })) },
+            p2: { edges: [] }
+          } : null
+        };
+      }
     }
     // 5. Staff / Investigator / Director Auteur query
     else if (qStr.includes('staff(search:')) {

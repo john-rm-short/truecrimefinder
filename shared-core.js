@@ -1117,6 +1117,9 @@
     return {
       id: item.id,
       idMal: item.id,
+      imdbId: item.imdbId || '',
+      imdbRating: item.imdbRating || null,
+      imdbVotes: item.imdbVotes || null,
       countryOfOrigin: item.countryOfOrigin || 'US',
       source: item.source || 'ARCHIVAL_INVESTIGATION',
       caseStatus: item.caseStatus || 'Solved',
@@ -1173,6 +1176,83 @@
       }
     };
   });
+
+  // Merge IMDb Official Dataset Index (imdb-catalog.js: 400 Crime + Documentary titles >=1,200 votes)
+  if (Array.isArray(global.TRUECRIME_IMDB_CATALOG)) {
+    const byNormTitle = new Map(
+      CANONICAL_DOSSIER_LIST.map(m => [String(m.title?.english || '').toLowerCase().replace(/[^a-z0-9]/g, ''), m])
+    );
+    for (const row of global.TRUECRIME_IMDB_CATALOG) {
+      if (!row || !row.imdbId || !row.title) continue;
+      const normKey = String(row.title).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const existing = byNormTitle.get(normKey);
+      if (existing) {
+        existing.imdbId = row.imdbId;
+        existing.imdbRating = row.imdbRating;
+        existing.imdbVotes = row.imdbVotes;
+        continue;
+      }
+      const isTv = row.type === 'tvSeries' || row.type === 'tvMiniSeries';
+      const id = 3000000 + (parseInt(row.imdbId.replace(/\D/g, ''), 10) % 900000);
+      const low = row.title.toLowerCase();
+      const caseStatus = /unsolved|cold|missing|disappear|vanish/.test(low)
+        ? 'Cold Case'
+        : /innocent|exonerat|wrongful|paradise/.test(low)
+          ? 'Exonerated'
+          : 'Solved';
+      const inferredTags = [{ name: 'Investigative Journalism', rank: 84 }];
+      if (/forensic|dna|autopsy/.test(low)) inferredTags.push({ name: 'Forensic DNA', rank: 90 });
+      if (/cold|unsolved|missing|disappear/.test(low)) inferredTags.push({ name: 'Cold Case', rank: 88 });
+      if (/killer|murder|homicide|serial|stalker|ripper/.test(low)) inferredTags.push({ name: 'Serial Offender', rank: 86 });
+      if (/cult|heaven|prophet|sect|jonestown/.test(low)) inferredTags.push({ name: 'Cult & High-Control Group', rank: 90 });
+      if (/fraud|scam|enron|fyre|heist|cartel|mob|mafia|cocaine|drug/.test(low)) inferredTags.push({ name: 'Corporate & White-Collar Fraud', rank: 88 });
+      if (row.year >= 1970 && row.year < 1980) inferredTags.push({ name: '1970s Era', rank: 85 });
+      else if (row.year >= 1980 && row.year < 1990) inferredTags.push({ name: '1980s Era', rank: 85 });
+      else if (row.year >= 1990 && row.year < 2000) inferredTags.push({ name: '1990s Era', rank: 85 });
+
+      const posterUri = makeDossierPosterDataUri(row.title, `IMDb ★ ${row.imdbRating} · ${row.year}`, '#f59e0b', isTv ? 'IMDB SERIES' : 'IMDB FILM');
+      const node = {
+        id,
+        idMal: id,
+        imdbId: row.imdbId,
+        imdbRating: row.imdbRating,
+        imdbVotes: row.imdbVotes,
+        _needsPosterHydration: true,
+        countryOfOrigin: 'US',
+        source: 'ARCHIVAL_INVESTIGATION',
+        caseStatus,
+        title: { english: row.title, romaji: row.title, native: `IMDb ${row.imdbId}` },
+        coverImage: { large: posterUri, medium: posterUri, color: '#f59e0b' },
+        format: isTv ? 'DOCUSERIES' : 'FEATURE_DOC',
+        status: 'FINISHED',
+        episodes: isTv ? null : 1,
+        duration: row.runtime || (isTv ? 48 : 92),
+        season: 'IMDB',
+        seasonYear: row.year,
+        averageScore: Math.round((row.imdbRating || 7.5) * 10),
+        meanScore: Math.round((row.imdbRating || 7.5) * 10),
+        popularity: row.imdbVotes || 5000,
+        favourites: Math.round((row.imdbVotes || 5000) / 10),
+        genres: [isTv ? 'Docuseries' : 'Feature Documentary', ...(row.genres || []).filter(g => g !== 'Documentary' && g !== 'Crime')],
+        isAdult: false,
+        description: `IMDb-verified True Crime ${isTv ? 'Docuseries' : 'Documentary Film'} (${row.year}) rated ★ ${row.imdbRating}/10 across ${Number(row.imdbVotes || 0).toLocaleString()} IMDb user votes. Open Full Dossier for Wikipedia background, streaming lookup, and OMDb ratings.`,
+        trailer: null,
+        studios: { nodes: [{ id: id + 1, name: 'IMDb True Crime Index' }] },
+        tags: inferredTags,
+        externalLinks: [
+          { site: 'IMDb', url: `https://www.imdb.com/title/${row.imdbId}/`, type: 'INFO' },
+          { site: 'JustWatch US', url: `https://www.justwatch.com/us/search?q=${encodeURIComponent(row.title)}`, type: 'STREAMING' }
+        ],
+        _matchedPlatforms: [],
+        nextAiringEpisode: null,
+        relations: { edges: [] },
+        characters: { edges: [] },
+        staff: { edges: [] }
+      };
+      CANONICAL_DOSSIER_LIST.push(node);
+      byNormTitle.set(normKey, node);
+    }
+  }
 
   const CANONICAL_BY_ID = new Map(CANONICAL_DOSSIER_LIST.map(m => [m.id, m]));
 
@@ -1496,6 +1576,7 @@
       overrides: {},
       settings: {
         tmdbKey: '',
+        omdbKey: '',
         gistToken: '',
         gistId: '',
         gistFilename: GIST_FILENAME,
@@ -1587,6 +1668,7 @@
       gistFilename: GIST_FILENAME,
       gistAutoSync: raw.settings?.gistAutoSync !== undefined ? Boolean(raw.settings.gistAutoSync) : true,
       tmdbKey: raw.settings?.tmdbKey ?? raw.tmdbKey ?? '',
+      omdbKey: raw.settings?.omdbKey ?? '',
       lastGistSync: Number(raw.settings?.lastGistSync || 0),
       anilistUsername: raw.settings?.anilistUsername || ''
     };
@@ -3326,12 +3408,111 @@
     return out;
   }
 
+  // Lazy poster hydrator for IMDb catalog cards (uses IndexedDB -> OMDb -> TVMaze IMDb lookup -> Wikipedia)
+  async function resolveImdbPosterUrl(media) {
+    if (!media || !media.imdbId) return '';
+    const cacheKey = `poster_imdb_v1_${media.imdbId}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
+    let found = '';
+    const omdbKey = getState().settings.omdbKey || '';
+    if (omdbKey) {
+      const oData = await fetchJsonSafe(`https://www.omdbapi.com/?apikey=${encodeURIComponent(omdbKey)}&i=${encodeURIComponent(media.imdbId)}`, 4000);
+      if (oData?.Poster && oData.Poster !== 'N/A') found = oData.Poster.replace(/^http:\/\//i, 'https://');
+    }
+    if (!found && media.format === 'DOCUSERIES') {
+      const tv = await fetchJsonSafe(`https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(media.imdbId)}`, 4000);
+      if (tv?.image?.original || tv?.image?.medium) {
+        found = (tv.image.original || tv.image.medium).replace(/^http:\/\//i, 'https://');
+      }
+    }
+    if (!found) {
+      const title = getDisplayTitle(media);
+      const wData = await fetchJsonSafe(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/\s+/g, '_'))}`, 4000);
+      const src = wData?.originalimage?.source || wData?.thumbnail?.source;
+      if (src) found = src.split('?')[0];
+    }
+    if (found) {
+      media.coverImage = { large: found, medium: found, color: '#f59e0b' };
+      media._needsPosterHydration = false;
+      await cacheSet(cacheKey, found, TTL_STABLE);
+    }
+    return found;
+  }
+
+  function hydrateCardPosters(container, itemsById) {
+    if (!container || !itemsById) return;
+    const cards = Array.from(container.querySelectorAll('.anime-card[data-anime-id], .anime-card[data-id]'));
+    if (!cards.length) return;
+
+    const hydrateOne = async (card) => {
+      const id = Number(card.dataset.animeId || card.dataset.id);
+      const m = itemsById.get(id);
+      if (!m || !m._needsPosterHydration || !m.imdbId) return;
+      const url = await resolveImdbPosterUrl(m);
+      if (url) {
+        const img = card.querySelector('img.anime-card-cover');
+        if (img) img.src = url;
+      }
+    };
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            obs.unobserve(entry.target);
+            hydrateOne(entry.target);
+          }
+        });
+      }, { rootMargin: '250px' });
+      cards.forEach(c => {
+        const id = Number(c.dataset.animeId || c.dataset.id);
+        if (itemsById.get(id)?._needsPosterHydration) obs.observe(c);
+      });
+    } else {
+      cards.slice(0, 16).forEach(hydrateOne);
+    }
+  }
+
+  async function fetchOmdbDetails(media, omdbKey) {
+    if (!omdbKey || !media) return null;
+    const imdbId = media.imdbId || '';
+    const title = getDisplayTitle(media).replace(/\s*\(Season.*?\)/i, '').trim();
+    const cacheKey = `omdb_tc_v1_${imdbId || title.toLowerCase()}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
+    const url = imdbId
+      ? `https://www.omdbapi.com/?apikey=${encodeURIComponent(omdbKey)}&i=${encodeURIComponent(imdbId)}&plot=short`
+      : `https://www.omdbapi.com/?apikey=${encodeURIComponent(omdbKey)}&t=${encodeURIComponent(title)}&plot=short`;
+    const data = await fetchJsonSafe(url, 4800);
+    if (!data || data.Response === 'False') return null;
+
+    const rt = (data.Ratings || []).find(r => r.Source === 'Rotten Tomatoes')?.Value || '';
+    const out = {
+      imdbID: data.imdbID || imdbId,
+      imdbRating: data.imdbRating && data.imdbRating !== 'N/A' ? data.imdbRating : '',
+      imdbVotes: data.imdbVotes && data.imdbVotes !== 'N/A' ? data.imdbVotes : '',
+      rottenTomatoes: rt,
+      metascore: data.Metascore && data.Metascore !== 'N/A' ? data.Metascore : '',
+      rated: data.Rated && data.Rated !== 'N/A' ? data.Rated : '',
+      awards: data.Awards && data.Awards !== 'N/A' ? data.Awards : '',
+      plot: data.Plot && data.Plot !== 'N/A' ? data.Plot : '',
+      poster: data.Poster && data.Poster !== 'N/A' ? data.Poster.replace(/^http:\/\//i, 'https://') : ''
+    };
+    await cacheSet(cacheKey, out, TTL_STABLE);
+    return out;
+  }
+
   async function fetchMultiSourceDetails(media) {
     if (!media || !media.id) return {};
-    const cacheKey = `multisrc_tc_v1_${media.id}`;
-    const tmdbKey = getState().settings.tmdbKey || '';
+    const cacheKey = `multisrc_tc_v2_${media.id}`;
+    const st = getState().settings;
+    const tmdbKey = st.tmdbKey || '';
+    const omdbKey = st.omdbKey || '';
     const cached = await cacheGet(cacheKey);
-    if (cached && (!tmdbKey || cached.tmdb !== undefined)) return cached;
+    if (cached && (!tmdbKey || cached.tmdb !== undefined) && (!omdbKey || cached.omdb !== undefined)) return cached;
 
     const title = getDisplayTitle(media).replace(/\s*\(Season.*?\)/i, '').trim();
 
@@ -3344,6 +3525,7 @@
         rating: hit.rating?.average,
         network: hit.network?.name || hit.webChannel?.name || '',
         status: hit.status,
+        imdb: hit.externals?.imdb || '',
         officialSite: hit.officialSite || '',
         url: hit.url
       };
@@ -3363,13 +3545,14 @@
 
     const wikiTask = fetchWikipediaSummary(title);
     const tmdbTask = tmdbKey ? fetchTmdbUsProviders(title, media.seasonYear, tmdbKey) : Promise.resolve(undefined);
+    const omdbTask = omdbKey ? fetchOmdbDetails(media, omdbKey) : Promise.resolve(undefined);
 
-    const [tvmaze, itunes, wikipedia, tmdb] = await Promise.all([
-      tvmazeTask, itunesTask, wikiTask, tmdbTask
+    const [tvmaze, itunes, wikipedia, tmdb, omdb] = await Promise.all([
+      tvmazeTask, itunesTask, wikiTask, tmdbTask, omdbTask
     ]);
 
-    const bundle = { tvmaze, itunes, wikipedia, tmdb };
-    if (tvmaze || itunes || wikipedia || tmdb) {
+    const bundle = { tvmaze, itunes, wikipedia, tmdb, omdb };
+    if (tvmaze || itunes || wikipedia || tmdb || omdb) {
       await cacheSet(cacheKey, bundle, TTL_STABLE);
     }
     return bundle;
@@ -3604,6 +3787,7 @@
             <a class="btn btn-cyan btn-sm" href="./eclectic-lab.html?tab=arithmetic&seed=${media.id}">Send to Case Arithmetic</a>
             ${ytTrailerId ? `<button type="button" class="btn btn-sm" id="af-toggle-trailer">▶ Watch Official Trailer</button>` : ''}
             <a class="btn btn-sm" href="${justWatchUrl}" target="_blank" rel="noopener noreferrer">JustWatch US ↗</a>
+            <a class="btn btn-sm" id="af-imdb-hero-link" href="${media.imdbId ? `https://www.imdb.com/title/${encodeURIComponent(media.imdbId)}/` : `https://www.imdb.com/find/?q=${encodeURIComponent(title)}`}" target="_blank" rel="noopener noreferrer" style="border-color:rgba(245,158,11,0.55);color:#fde68a;">IMDb${media.imdbRating ? ` ★ ${media.imdbRating}` : ''} ↗</a>
             <a class="btn btn-sm" href="https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(title)}" target="_blank" rel="noopener noreferrer">Wikipedia Case File ↗</a>
           </div>
           <div id="af-trailer-slot"></div>
@@ -3907,6 +4091,20 @@
       if (multi.itunes?.url) extraLinks.push({ name: 'Apple Podcasts', url: multi.itunes.url });
       const streamLinks = getStreamingLinks(media, extraLinks);
 
+      const resolvedImdbId = multi.omdb?.imdbID || media.imdbId || multi.tvmaze?.imdb || '';
+      if (resolvedImdbId) {
+        const imdbBtn = bodyEl.querySelector('#af-imdb-hero-link');
+        if (imdbBtn) {
+          imdbBtn.href = `https://www.imdb.com/title/${encodeURIComponent(resolvedImdbId)}/`;
+          const ratingTxt = multi.omdb?.imdbRating || media.imdbRating || '';
+          if (ratingTxt) imdbBtn.textContent = `IMDb ★ ${ratingTxt} ↗`;
+        }
+      }
+      if (multi.omdb?.poster) {
+        const coverImg = bodyEl.querySelector('.detail-cover');
+        if (coverImg && coverImg.src.startsWith('data:image/svg+xml')) coverImg.src = multi.omdb.poster;
+      }
+
       area.innerHTML = `
         <div class="meta-row" style="margin-bottom:12px;">
           <strong style="color:var(--text);">Where to Watch / Listen:</strong>
@@ -3916,6 +4114,22 @@
               ? mergedPlatforms.map(p => `<span class="platform-tag" style="border-color:${p.color};color:${p.color};">${escapeHtml(p.name)}${p.freeWithAds ? ' (Free)' : ''}</span>`).join('')
               : '<span class="badge badge-muted">Check JustWatch US above or set custom network overrides</span>'}
         </div>
+        ${(multi.omdb || media.imdbId || multi.tvmaze?.imdb) ? `
+          <div class="panel" style="padding:10px;margin-bottom:12px;border-color:rgba(245,158,11,0.35);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--amber);text-transform:uppercase;font-weight:700;">IMDb &amp; OMDb Ratings</span>
+              ${resolvedImdbId ? `<a href="https://www.imdb.com/title/${encodeURIComponent(resolvedImdbId)}/" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;color:var(--amber);">Open ${escapeHtml(resolvedImdbId)} on IMDb ↗</a>` : ''}
+            </div>
+            <div style="font-size:12.5px;color:var(--text);">
+              <strong>IMDb:</strong> ${escapeHtml(multi.omdb?.imdbRating || (media.imdbRating ? String(media.imdbRating) : '—'))}/10
+              ${(multi.omdb?.imdbVotes || media.imdbVotes) ? ` (${escapeHtml(multi.omdb?.imdbVotes || Number(media.imdbVotes).toLocaleString())} votes)` : ''}
+              ${multi.omdb?.rottenTomatoes ? ` &nbsp;·&nbsp; <strong>Rotten Tomatoes:</strong> ${escapeHtml(multi.omdb.rottenTomatoes)}` : ''}
+              ${multi.omdb?.metascore ? ` &nbsp;·&nbsp; <strong>Metascore:</strong> ${escapeHtml(multi.omdb.metascore)}` : ''}
+              ${multi.omdb?.rated ? ` &nbsp;·&nbsp; <span class="badge badge-muted">${escapeHtml(multi.omdb.rated)}</span>` : ''}
+            </div>
+            ${multi.omdb?.awards ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">🏆 ${escapeHtml(multi.omdb.awards)}</div>` : ''}
+          </div>
+        ` : ''}
         <div class="grid-2" style="gap:10px;margin-bottom:12px;">
           <div class="panel" style="padding:10px;">
             <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;">TVMaze Broadcast Index</div>
@@ -4027,6 +4241,8 @@
     fetchTmdbUsProviders,
     fetchTmdbTrueCrimeDiscover,
     fetchExpandedTvMazeCatalog,
+    fetchOmdbDetails,
+    hydrateCardPosters,
     fetchMultiSourceDetails,
     mountNav,
     openDetailModal,

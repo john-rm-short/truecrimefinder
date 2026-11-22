@@ -180,25 +180,32 @@
           <div id="gistLastSyncLabel" style="font-size:11.5px;color:var(--text-dim);margin-top:8px;"></div>
         </div>
 
-        <!-- Case Dossier Pack Importer & TMDB Key -->
+        <!-- Case Dossier Pack Importer, TMDB & OMDb Keys -->
         <div class="panel" style="grid-column: 1 / -1;">
           <div class="panel-header">
-            <h3 class="panel-title">Case Dossier Pack Importer, TMDB &amp; Cache</h3>
-            <span class="badge badge-purple">Instant Seed</span>
+            <h3 class="panel-title">Case Dossier Pack Importer, TMDB, OMDb (IMDb) &amp; Cache</h3>
+            <span class="badge badge-purple">Instant Seed + Live Keys</span>
           </div>
-          <div class="grid-2" style="margin-bottom:12px;">
+          <div class="grid-3" style="margin-bottom:12px;">
             <form onsubmit="return false;" class="form-field">
-              <label for="anilistImportUser">Quick-Import Case Dossier Collection (e.g. <code>starter</code>, <code>Cold Case</code>, <code>Exonerated</code>, <code>HBO</code>, <code>Podcasts</code>)</label>
+              <label for="anilistImportUser">Quick-Import Case Dossier Pack (<code>starter</code>, <code>Cold Case</code>, <code>HBO</code>)</label>
               <div style="display:flex;gap:8px;">
                 <input id="anilistImportUser" type="text" class="input input-full" value="starter" placeholder="starter, Cold Case, Exonerated, HBO, Podcasts...">
-                <button type="button" class="btn btn-cyan btn-sm" id="importAnilistBtn">Import Dossier Pack</button>
+                <button type="button" class="btn btn-cyan btn-sm" id="importAnilistBtn">Import Pack</button>
               </div>
             </form>
             <form onsubmit="return false;" class="form-field">
-              <label for="tmdbKeyInput">Optional TMDB API Key (US JustWatch Providers)</label>
+              <label for="tmdbKeyInput">Optional TMDB API Key (US JustWatch + Discover)</label>
               <div style="display:flex;gap:8px;">
-                <input id="tmdbKeyInput" type="password" autocomplete="off" class="input input-full" placeholder="TMDB v3 API key (stored locally only)">
-                <button type="button" class="btn btn-sm" id="saveTmdbKeyBtn">Save Key</button>
+                <input id="tmdbKeyInput" type="password" autocomplete="off" class="input input-full" placeholder="TMDB v3 API key (local only)">
+                <button type="button" class="btn btn-sm" id="saveTmdbKeyBtn">Save</button>
+              </div>
+            </form>
+            <form onsubmit="return false;" class="form-field">
+              <label for="omdbKeyInput">Optional OMDb API Key (Live IMDb &amp; Rotten Tomatoes)</label>
+              <div style="display:flex;gap:8px;">
+                <input id="omdbKeyInput" type="password" autocomplete="off" class="input input-full" placeholder="Free OMDb API key (local only)">
+                <button type="button" class="btn btn-sm" id="saveOmdbKeyBtn">Save</button>
               </div>
             </form>
           </div>
@@ -341,6 +348,7 @@
   </main>
 
   <script src="./catalog-data.js"></script>
+  <script src="./imdb-catalog.js"></script>
   <script src="./shared-core.js"></script>
   <script>
     (function () {
@@ -584,6 +592,7 @@
             }
           });
         });
+        AF.hydrateCardPosters(container, itemsById);
       }
 
       // ----------------------------------------------------------------------
@@ -620,7 +629,7 @@
 
         const query = `query ($start: Int, $end: Int) { past72h { airingSchedules } activeOnas { media } catalog { media } }`;
         try {
-          const cacheKey = forceRefresh ? null : `tc_releases_v4_${activePlatform}`;
+          const cacheKey = forceRefresh ? null : `tc_releases_v5_${activePlatform}`;
           const data = await AF.anilistQuery(query, { start: start72h, end: nowSec, platform: activePlatform }, { cacheKey, ttl: AF.TTL_DYNAMIC });
 
           const mergedMap = new Map();
@@ -986,6 +995,7 @@
         setValIfNotFocused('gistIdInput', state.settings.gistId || '');
         document.getElementById('gistAutoSyncCheck').checked = state.settings.gistAutoSync !== false;
         setValIfNotFocused('tmdbKeyInput', state.settings.tmdbKey || '');
+        setValIfNotFocused('omdbKeyInput', state.settings.omdbKey || '');
         setValIfNotFocused('anilistImportUser', state.settings.anilistUsername || 'starter');
 
         document.getElementById('wizStep1').classList.toggle('done', hasToken);
@@ -1063,6 +1073,9 @@
       document.getElementById('tmdbKeyInput').addEventListener('change', () => {
         AF.updateSettings({ tmdbKey: document.getElementById('tmdbKeyInput').value.trim() });
       });
+      document.getElementById('omdbKeyInput').addEventListener('change', () => {
+        AF.updateSettings({ omdbKey: document.getElementById('omdbKeyInput').value.trim() });
+      });
       document.getElementById('anilistImportUser').addEventListener('change', () => {
         AF.updateSettings({ anilistUsername: document.getElementById('anilistImportUser').value.trim() });
       });
@@ -1111,6 +1124,11 @@
       document.getElementById('saveTmdbKeyBtn').addEventListener('click', () => {
         AF.updateSettings({ tmdbKey: document.getElementById('tmdbKeyInput').value.trim() });
         AF.toast('Saved TMDB API key locally.', 'success');
+      });
+
+      document.getElementById('saveOmdbKeyBtn').addEventListener('click', () => {
+        AF.updateSettings({ omdbKey: document.getElementById('omdbKeyInput').value.trim() });
+        AF.toast('Saved OMDb API key locally (live IMDb & Rotten Tomatoes enabled).', 'success');
       });
 
       document.getElementById('clearApiCacheBtn').addEventListener('click', async () => {

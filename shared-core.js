@@ -1104,8 +1104,14 @@
     }
   ];
 
+  // Merge optional expanded catalog (catalog-data.js) into canonical list (115+ built-in titles)
+  const MERGED_RAW_CATALOG = [
+    ...RAW_DOSSIER_CATALOG,
+    ...(Array.isArray(global.TRUECRIME_EXTRA_CATALOG) ? global.TRUECRIME_EXTRA_CATALOG : [])
+  ];
+
   // Normalize raw dossier catalog into unified media objects compatible across all 3 pages
-  const CANONICAL_DOSSIER_LIST = RAW_DOSSIER_CATALOG.map(item => {
+  const CANONICAL_DOSSIER_LIST = MERGED_RAW_CATALOG.map(item => {
     const primaryPlat = PLATFORM_BY_ID[item.platforms?.[0]] || PLATFORM_CONFIG[0];
     const posterUri = CANONICAL_POSTERS_BY_ID[item.id] || item.cover || makeDossierPosterDataUri(item.title, `${item.studio} · ${item.seasonYear}`, primaryPlat.color, item.caseStatus.toUpperCase());
     return {
@@ -2447,6 +2453,160 @@
     return false;
   }
 
+  // Official US JustWatch / TMDB Watch Provider IDs for live TMDB Discover queries
+  const TMDB_PROVIDER_IDS = {
+    netflix: '8',
+    max: '1899',
+    hulu: '15',
+    peacock: '386',
+    id: '520',
+    oxygen: '79',
+    paramount: '531',
+    prime: '9',
+    appletv: '350',
+    tubi: '73',
+    pluto: '300'
+  };
+
+  function normalizeTmdbItem(item, mediaType, platformHint = null) {
+    if (!item || !item.id) return null;
+    const isMovie = mediaType === 'movie';
+    const title = isMovie ? (item.title || item.original_title) : (item.name || item.original_name);
+    if (!title) return null;
+    const id = (isMovie ? 9000000 : 8000000) + Number(item.id);
+    const dateStr = isMovie ? item.release_date : item.first_air_date;
+    const year = dateStr ? Number(dateStr.slice(0, 4)) : 2023;
+    const score = item.vote_average ? Math.round(item.vote_average * 10) : 78;
+    const cover = item.poster_path
+      ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+      : makeDossierPosterDataUri(title, `TMDB · ${year}`, '#38bdf8', isMovie ? 'FEATURE DOC' : 'DOCUSERIES');
+    const desc = stripHtml(item.overview || 'True crime documentary indexed via TMDB.');
+    const low = (title + ' ' + desc).toLowerCase();
+    const caseStatus = /unsolved|cold case|missing|vanish/.test(low)
+      ? 'Cold Case'
+      : /innocen|exonerat|wrongful/.test(low)
+        ? 'Exonerated'
+        : 'Solved';
+    const tags = [{ name: 'Investigative Journalism', rank: 85 }];
+    if (/forensic|dna|autopsy/.test(low)) tags.push({ name: 'Forensic DNA', rank: 90 });
+    if (/cold case|unsolved|missing/.test(low)) tags.push({ name: 'Cold Case', rank: 88 });
+    if (/serial|killer|murder|homicide/.test(low)) tags.push({ name: 'Serial Offender', rank: 84 });
+    if (/cult|sect/.test(low)) tags.push({ name: 'Cult & High-Control Group', rank: 88 });
+    if (/fraud|scam|con artist|heist/.test(low)) tags.push({ name: 'Corporate & White-Collar Fraud', rank: 86 });
+
+    return {
+      id,
+      _tmdbId: item.id,
+      countryOfOrigin: Array.isArray(item.origin_country) && item.origin_country[0] ? item.origin_country[0] : 'US',
+      source: 'ARCHIVAL_INVESTIGATION',
+      caseStatus,
+      title: { english: title, romaji: title, native: isMovie ? 'TMDB Documentary Film' : 'TMDB Docuseries' },
+      coverImage: { large: cover, medium: cover, color: '#38bdf8' },
+      format: isMovie ? 'FEATURE_DOC' : 'DOCUSERIES',
+      status: 'FINISHED',
+      episodes: isMovie ? 1 : null,
+      duration: isMovie ? 95 : 48,
+      seasonYear: year,
+      averageScore: score,
+      popularity: Math.round((item.popularity || 15) * 2200),
+      genres: [isMovie ? 'Feature Documentary' : 'Docuseries'],
+      isAdult: false,
+      description: desc,
+      trailer: null,
+      studios: { nodes: [{ id: id + 1, name: platformHint && PLATFORM_BY_ID[platformHint] ? PLATFORM_BY_ID[platformHint].name : 'TMDB True Crime' }] },
+      tags,
+      externalLinks: [{ site: 'JustWatch US', url: `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`, type: 'STREAMING' }],
+      _matchedPlatforms: platformHint && PLATFORM_BY_ID[platformHint] ? [platformHint] : [],
+      nextAiringEpisode: null,
+      relations: { edges: [] },
+      characters: { edges: [] },
+      staff: { edges: [] }
+    };
+  }
+
+  // Live TMDB Discover for True Crime Movies & Docuseries (runs automatically when user saves a free TMDB v3 API key)
+  async function fetchTmdbTrueCrimeDiscover({ platformId = 'all', startYear = null, endYear = null, pages = 2 } = {}) {
+    const tmdbKey = getState().settings.tmdbKey;
+    if (!tmdbKey) return [];
+    const cacheKey = `tmdb_tc_disc_v1_${platformId}_${startYear || 'all'}_${endYear || 'all'}_${pages}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return cached;
+
+    const provId = TMDB_PROVIDER_IDS[platformId] || '';
+    const provParam = provId ? `&watch_region=US&with_watch_providers=${provId}` : '';
+    const collected = [];
+    const seen = new Set();
+
+    const tasks = [];
+    for (let p = 1; p <= pages; p++) {
+      const tvDates = `${startYear ? `&first_air_date.gte=${startYear}-01-01` : ''}${endYear ? `&first_air_date.lte=${endYear}-12-31` : ''}`;
+      const mvDates = `${startYear ? `&primary_release_date.gte=${startYear}-01-01` : ''}${endYear ? `&primary_release_date.lte=${endYear}-12-31` : ''}`;
+      tasks.push(
+        fetchJsonSafe(`https://api.themoviedb.org/3/discover/tv?api_key=${encodeURIComponent(tmdbKey)}&with_genres=99,80&sort_by=popularity.desc&page=${p}${provParam}${tvDates}`, 5200)
+          .then(d => (d?.results || []).map(r => normalizeTmdbItem(r, 'tv', provId ? platformId : null)))
+      );
+      tasks.push(
+        fetchJsonSafe(`https://api.themoviedb.org/3/discover/movie?api_key=${encodeURIComponent(tmdbKey)}&with_genres=99,80&sort_by=popularity.desc&page=${p}${provParam}${mvDates}`, 5200)
+          .then(d => (d?.results || []).map(r => normalizeTmdbItem(r, 'movie', provId ? platformId : null)))
+      );
+    }
+
+    const batches = await Promise.all(tasks);
+    for (const list of batches) {
+      for (const m of (list || [])) {
+        if (!m) continue;
+        const k = getDisplayTitle(m).toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        CANONICAL_BY_ID.set(m.id, m);
+        collected.push(m);
+      }
+    }
+
+    if (collected.length) await cacheSet(cacheKey, collected, TTL_STABLE);
+    return collected;
+  }
+
+  // Live Multi-Topic TVMaze True Crime Pool (zero API key, cached 24h in IndexedDB — adds 100+ real shows & networks)
+  let expandedTvMazePromise = null;
+  async function fetchExpandedTvMazeCatalog(forceRefresh = false) {
+    const cacheKey = 'tvmaze_expanded_tc_pool_v1';
+    if (!forceRefresh) {
+      const cached = await cacheGet(cacheKey);
+      if (cached && cached.length) {
+        cached.forEach(m => { if (!CANONICAL_BY_ID.has(m.id)) CANONICAL_BY_ID.set(m.id, m); });
+        return cached;
+      }
+      if (expandedTvMazePromise) return expandedTvMazePromise;
+    }
+
+    const topics = [
+      'murder', 'homicide', 'forensic', 'cold case', 'killer', 'unsolved',
+      'snapped', 'disappeared', 'cult', 'detective', 'crime scene', 'scam'
+    ];
+
+    expandedTvMazePromise = (async () => {
+      const seenTitles = new Set(CANONICAL_DOSSIER_LIST.map(m => getDisplayTitle(m).toLowerCase()));
+      const out = [];
+      const results = await Promise.all(topics.map(t => fetchLiveTvMazeCrimeShows(t, 12)));
+      for (const list of results) {
+        for (const m of (list || [])) {
+          const k = getDisplayTitle(m).toLowerCase();
+          if (seenTitles.has(k)) continue;
+          seenTitles.add(k);
+          CANONICAL_BY_ID.set(m.id, m);
+          out.push(m);
+        }
+      }
+      if (out.length) await cacheSet(cacheKey, out, TTL_STABLE);
+      return out;
+    })();
+
+    const data = await expandedTvMazePromise;
+    expandedTvMazePromise = null;
+    return data;
+  }
+
   async function fetchLiveTvMazeCrimeShows(term = 'true crime documentary', limit = 12) {
     const cacheKey = `tvmaze_tc_shows_v2_${term.toLowerCase()}_${limit}`;
     const cached = await cacheGet(cacheKey);
@@ -2630,12 +2790,14 @@
       const sched = await fetchLiveCrimeSchedule(start, end);
       result = { p1: { airingSchedules: sched }, p2: { airingSchedules: [] }, p3: { airingSchedules: [] } };
     }
-    // 2. Releases tab query
+    // 2. Releases tab query (blends all 115+ canonical titles + 100+ live TVMaze true crime shows + live Apple Podcasts + optional TMDB Discover)
     else if (qStr.includes('past72h') && qStr.includes('activeOnas')) {
       const nowSec = Math.floor(Date.now() / 1000);
-      const [livePods, liveTv] = await Promise.all([
-        fetchLiveTrueCrimePodcasts('true crime murder mystery', 10),
-        fetchLiveTvMazeCrimeShows('crime documentary', 10)
+      const platHint = variables.platform || 'all';
+      const [livePods, liveTvPool, tmdbDisc] = await Promise.all([
+        fetchLiveTrueCrimePodcasts('true crime murder mystery', 14),
+        fetchExpandedTvMazeCatalog(),
+        fetchTmdbTrueCrimeDiscover({ platformId: platHint, pages: 2 })
       ]);
       const recentSched = CANONICAL_DOSSIER_LIST.slice(0, 12).map((m, idx) => ({
         id: m.id * 10 + idx,
@@ -2643,10 +2805,17 @@
         airingAt: nowSec - (idx * 5 + 3) * 3600,
         media: m
       }));
-      const pool = [...CANONICAL_DOSSIER_LIST, ...liveTv, ...livePods];
+      const seenTitles = new Set();
+      const pool = [];
+      for (const m of [...CANONICAL_DOSSIER_LIST, ...tmdbDisc, ...liveTvPool, ...livePods]) {
+        const k = getDisplayTitle(m).toLowerCase();
+        if (seenTitles.has(k)) continue;
+        seenTitles.add(k);
+        pool.push(m);
+      }
       result = {
         past72h: { airingSchedules: recentSched },
-        activeOnas: { media: pool.slice(0, 28) },
+        activeOnas: { media: pool.slice(0, 40) },
         catalog: { media: pool }
       };
     }
@@ -3856,6 +4025,8 @@
     importAniListWatchlist,
     fetchWikipediaSummary,
     fetchTmdbUsProviders,
+    fetchTmdbTrueCrimeDiscover,
+    fetchExpandedTvMazeCatalog,
     fetchMultiSourceDetails,
     mountNav,
     openDetailModal,

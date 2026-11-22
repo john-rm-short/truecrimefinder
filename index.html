@@ -340,6 +340,7 @@
     </section>
   </main>
 
+  <script src="./catalog-data.js"></script>
   <script src="./shared-core.js"></script>
   <script>
     (function () {
@@ -362,10 +363,11 @@
       let loadedTabs = new Set();
 
       const CURATED_STUDIOS = [
-        'HBO Documentary Films', 'Netflix', 'Serial Productions', 'NBC News',
-        'CBS News', 'ABC News Studios', 'Wondery', 'APM Reports',
-        'New Hampshire Public Radio', 'Raw TV', 'A&E Originals',
-        'Duplass Brothers Productions', 'ESPN Films', 'Cosgrove/Meurer Productions'
+        'Investigation Discovery', 'Oxygen True Crime', 'HBO Documentary Films', 'Netflix',
+        'Hulu', 'Peacock', 'Apple TV+', 'Amazon Studios', 'Paramount+ / CBS',
+        'A&E Originals', 'Medstar Television', 'Raw TV', 'NBC News', 'CBS News',
+        'ABC News Studios', 'Serial Productions', 'Wondery', 'APM Reports',
+        'New Hampshire Public Radio', 'Duplass Brothers Productions', 'ESPN Films', 'Cosgrove/Meurer Productions'
       ];
 
       function switchTab(tabName) {
@@ -618,8 +620,8 @@
 
         const query = `query ($start: Int, $end: Int) { past72h { airingSchedules } activeOnas { media } catalog { media } }`;
         try {
-          const cacheKey = forceRefresh ? null : `tc_releases_v3_${activePlatform}`;
-          const data = await AF.anilistQuery(query, { start: start72h, end: nowSec }, { cacheKey, ttl: AF.TTL_DYNAMIC });
+          const cacheKey = forceRefresh ? null : `tc_releases_v4_${activePlatform}`;
+          const data = await AF.anilistQuery(query, { start: start72h, end: nowSec, platform: activePlatform }, { cacheKey, ttl: AF.TTL_DYNAMIC });
 
           const mergedMap = new Map();
           for (const sched of (data?.past72h?.airingSchedules || [])) {
@@ -1384,7 +1386,22 @@
         const rangeLabel = activeArchiveDecade ? `${startYr}s (${startYr}–${endYr})` : String(year);
         const eraTag = activeArchiveDecade === 1970 ? '1970s Era' : activeArchiveDecade === 1980 ? '1980s Era' : activeArchiveDecade === 1990 ? '1990s Era' : null;
 
-        let list = AF.CANONICAL_DOSSIER_LIST.filter(m => {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="spinner"></span> Scanning ${rangeLabel} true crime archives (Canonical + TVMaze${AF.getState().settings.tmdbKey ? ' + TMDB Discover' : ''})...</div>`;
+
+        const [tvPool, tmdbPool] = await Promise.all([
+          AF.fetchExpandedTvMazeCatalog(),
+          AF.fetchTmdbTrueCrimeDiscover({ startYear: startYr, endYear: endYr, pages: 2 })
+        ]);
+        const seen = new Set();
+        const combined = [];
+        for (const m of [...AF.CANONICAL_DOSSIER_LIST, ...tmdbPool, ...tvPool]) {
+          const k = AF.getDisplayTitle(m).toLowerCase();
+          if (seen.has(k)) continue;
+          seen.add(k);
+          combined.push(m);
+        }
+
+        let list = combined.filter(m => {
           const yrMatch = (m.seasonYear >= startYr && m.seasonYear <= endYr) ||
             (eraTag && (m.tags || []).some(t => t.name === eraTag));
           if (!yrMatch) return false;

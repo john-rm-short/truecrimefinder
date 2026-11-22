@@ -1190,11 +1190,16 @@
         existing.imdbId = row.imdbId;
         existing.imdbRating = row.imdbRating;
         existing.imdbVotes = row.imdbVotes;
+        if (row.rt) existing.rottenTomatoes = row.rt;
+        if (row.rated) existing.mpaaRated = row.rated;
+        if (row.poster && String(existing.coverImage?.large || '').startsWith('data:image/svg+xml')) {
+          existing.coverImage = { large: row.poster, medium: row.poster, color: '#f59e0b' };
+        }
         continue;
       }
       const isTv = row.type === 'tvSeries' || row.type === 'tvMiniSeries';
       const id = 3000000 + (parseInt(row.imdbId.replace(/\D/g, ''), 10) % 900000);
-      const low = row.title.toLowerCase();
+      const low = (row.title + ' ' + (row.plot || '')).toLowerCase();
       const caseStatus = /unsolved|cold|missing|disappear|vanish/.test(low)
         ? 'Cold Case'
         : /innocent|exonerat|wrongful|paradise/.test(low)
@@ -1206,18 +1211,22 @@
       if (/killer|murder|homicide|serial|stalker|ripper/.test(low)) inferredTags.push({ name: 'Serial Offender', rank: 86 });
       if (/cult|heaven|prophet|sect|jonestown/.test(low)) inferredTags.push({ name: 'Cult & High-Control Group', rank: 90 });
       if (/fraud|scam|enron|fyre|heist|cartel|mob|mafia|cocaine|drug/.test(low)) inferredTags.push({ name: 'Corporate & White-Collar Fraud', rank: 88 });
+      if (/trial|court|attorney|prosecut|innocent|exonerat|wrongful/.test(low)) inferredTags.push({ name: 'Courtroom & Legal', rank: 86 });
       if (row.year >= 1970 && row.year < 1980) inferredTags.push({ name: '1970s Era', rank: 85 });
       else if (row.year >= 1980 && row.year < 1990) inferredTags.push({ name: '1980s Era', rank: 85 });
       else if (row.year >= 1990 && row.year < 2000) inferredTags.push({ name: '1990s Era', rank: 85 });
 
-      const posterUri = makeDossierPosterDataUri(row.title, `IMDb ★ ${row.imdbRating} · ${row.year}`, '#f59e0b', isTv ? 'IMDB SERIES' : 'IMDB FILM');
+      const posterUri = row.poster || makeDossierPosterDataUri(row.title, `IMDb ★ ${row.imdbRating} · ${row.year}`, '#f59e0b', isTv ? 'IMDB SERIES' : 'IMDB FILM');
+      const directors = row.director ? row.director.split(',').map(s => s.trim()).filter(Boolean) : [];
       const node = {
         id,
         idMal: id,
         imdbId: row.imdbId,
         imdbRating: row.imdbRating,
         imdbVotes: row.imdbVotes,
-        _needsPosterHydration: true,
+        rottenTomatoes: row.rt || '',
+        mpaaRated: row.rated || '',
+        _needsPosterHydration: !row.poster,
         countryOfOrigin: 'US',
         source: 'ARCHIVAL_INVESTIGATION',
         caseStatus,
@@ -1235,7 +1244,7 @@
         favourites: Math.round((row.imdbVotes || 5000) / 10),
         genres: [isTv ? 'Docuseries' : 'Feature Documentary', ...(row.genres || []).filter(g => g !== 'Documentary' && g !== 'Crime')],
         isAdult: false,
-        description: `IMDb-verified True Crime ${isTv ? 'Docuseries' : 'Documentary Film'} (${row.year}) rated ★ ${row.imdbRating}/10 across ${Number(row.imdbVotes || 0).toLocaleString()} IMDb user votes. Open Full Dossier for Wikipedia background, streaming lookup, and OMDb ratings.`,
+        description: row.plot || `IMDb-verified True Crime ${isTv ? 'Docuseries' : 'Documentary Film'} (${row.year}) rated ★ ${row.imdbRating}/10 across ${Number(row.imdbVotes || 0).toLocaleString()} IMDb user votes.`,
         trailer: null,
         studios: { nodes: [{ id: id + 1, name: 'IMDb True Crime Index' }] },
         tags: inferredTags,
@@ -1247,7 +1256,12 @@
         nextAiringEpisode: null,
         relations: { edges: [] },
         characters: { edges: [] },
-        staff: { edges: [] }
+        staff: {
+          edges: directors.map((dName, dIdx) => ({
+            role: 'Director',
+            node: { id: id * 10 + dIdx, name: { full: dName } }
+          }))
+        }
       };
       CANONICAL_DOSSIER_LIST.push(node);
       byNormTitle.set(normKey, node);
@@ -4123,9 +4137,9 @@
             <div style="font-size:12.5px;color:var(--text);">
               <strong>IMDb:</strong> ${escapeHtml(multi.omdb?.imdbRating || (media.imdbRating ? String(media.imdbRating) : '—'))}/10
               ${(multi.omdb?.imdbVotes || media.imdbVotes) ? ` (${escapeHtml(multi.omdb?.imdbVotes || Number(media.imdbVotes).toLocaleString())} votes)` : ''}
-              ${multi.omdb?.rottenTomatoes ? ` &nbsp;·&nbsp; <strong>Rotten Tomatoes:</strong> ${escapeHtml(multi.omdb.rottenTomatoes)}` : ''}
+              ${(multi.omdb?.rottenTomatoes || media.rottenTomatoes) ? ` &nbsp;·&nbsp; <strong>Rotten Tomatoes:</strong> ${escapeHtml(multi.omdb?.rottenTomatoes || media.rottenTomatoes)}` : ''}
               ${multi.omdb?.metascore ? ` &nbsp;·&nbsp; <strong>Metascore:</strong> ${escapeHtml(multi.omdb.metascore)}` : ''}
-              ${multi.omdb?.rated ? ` &nbsp;·&nbsp; <span class="badge badge-muted">${escapeHtml(multi.omdb.rated)}</span>` : ''}
+              ${(multi.omdb?.rated || media.mpaaRated) ? ` &nbsp;·&nbsp; <span class="badge badge-muted">${escapeHtml(multi.omdb?.rated || media.mpaaRated)}</span>` : ''}
             </div>
             ${multi.omdb?.awards ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">🏆 ${escapeHtml(multi.omdb.awards)}</div>` : ''}
           </div>

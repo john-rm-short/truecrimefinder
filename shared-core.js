@@ -1170,24 +1170,34 @@
         isGeneralSpoiler: false
       })),
       externalLinks: (() => {
-        const directMap = (global.TRUECRIME_STREAMING_LINKS && global.TRUECRIME_STREAMING_LINKS[String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')]) || {};
-        const pids = Array.from(new Set([...(item.platforms || []), ...Object.keys(directMap)]));
-        return pids.map(pid => {
-          const p = PLATFORM_BY_ID[pid];
-          if (!p) return null;
-          const directUrl = directMap[pid];
-          return {
-            site: p.name,
-            platformId: pid,
-            url: directUrl || (p.searchUrl ? p.searchUrl(item.title) : `https://www.justwatch.com/us/search?q=${encodeURIComponent(item.title)}`),
-            isDirect: Boolean(directUrl),
-            type: 'STREAMING'
-          };
-        }).filter(Boolean);
+        const key = String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const hasVerified = Boolean(global.TRUECRIME_STREAMING_LINKS && Object.prototype.hasOwnProperty.call(global.TRUECRIME_STREAMING_LINKS, key));
+        const directMap = hasVerified ? (global.TRUECRIME_STREAMING_LINKS[key] || {}) : {};
+        if (hasVerified) {
+          return Object.entries(directMap).map(([pid, directUrl]) => {
+            const p = PLATFORM_BY_ID[pid];
+            if (!p || !directUrl) return null;
+            return { site: p.name, platformId: pid, url: directUrl, isDirect: true, type: 'STREAMING' };
+          }).filter(Boolean);
+        }
+        if (item.format === 'PODCAST') {
+          const p = PLATFORM_BY_ID.podcasts;
+          return p ? [{ site: p.name, platformId: 'podcasts', url: p.searchUrl(item.title), isDirect: false, type: 'STREAMING' }] : [];
+        }
+        return [];
+      })(),
+      _verifiedStreaming: (() => {
+        const key = String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return Boolean(global.TRUECRIME_STREAMING_LINKS && Object.prototype.hasOwnProperty.call(global.TRUECRIME_STREAMING_LINKS, key));
       })(),
       _matchedPlatforms: (() => {
-        const directMap = (global.TRUECRIME_STREAMING_LINKS && global.TRUECRIME_STREAMING_LINKS[String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')]) || {};
-        return Array.from(new Set([...(item.platforms || []), ...Object.keys(directMap)])).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
+        const key = String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const hasVerified = Boolean(global.TRUECRIME_STREAMING_LINKS && Object.prototype.hasOwnProperty.call(global.TRUECRIME_STREAMING_LINKS, key));
+        if (hasVerified) {
+          const verifiedPids = Object.keys(global.TRUECRIME_STREAMING_LINKS[key] || {}).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
+          return item.format === 'PODCAST' ? Array.from(new Set(['podcasts', ...verifiedPids])) : verifiedPids;
+        }
+        return (item.platforms || []).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
       })(),
       nextAiringEpisode: item.nextAiringEpisode || null,
       relations: { edges: [] },
@@ -1220,17 +1230,13 @@
           existing.coverImage = { large: row.poster, medium: row.poster, color: '#f59e0b' };
         }
         if (row.streamUrls && typeof row.streamUrls === 'object') {
-          existing._matchedPlatforms = Array.from(new Set([...(existing._matchedPlatforms || []), ...Object.keys(row.streamUrls)])).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
-          for (const [pid, sUrl] of Object.entries(row.streamUrls)) {
+          existing._verifiedStreaming = true;
+          const verifiedPids = Object.keys(row.streamUrls).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
+          existing._matchedPlatforms = existing.format === 'PODCAST' ? Array.from(new Set(['podcasts', ...verifiedPids])) : verifiedPids;
+          existing.externalLinks = verifiedPids.map(pid => {
             const p = PLATFORM_BY_ID[pid];
-            if (!p || !sUrl) continue;
-            const prev = (existing.externalLinks || []).find(l => l.platformId === pid || String(l.site || '').toLowerCase() === p.name.toLowerCase());
-            if (prev) {
-              if (!prev.isDirect) { prev.url = sUrl; prev.isDirect = true; prev.platformId = pid; }
-            } else {
-              existing.externalLinks = [...(existing.externalLinks || []), { site: p.name, platformId: pid, url: sUrl, isDirect: true, type: 'STREAMING' }];
-            }
-          }
+            return { site: p.name, platformId: pid, url: row.streamUrls[pid], isDirect: true, type: 'STREAMING' };
+          });
         }
         continue;
       }
@@ -1306,6 +1312,7 @@
           { site: 'IMDb', url: `https://www.imdb.com/title/${row.imdbId}/`, type: 'INFO' },
           ...streamExtLinks
         ],
+        _verifiedStreaming: true,
         _matchedPlatforms: rowPlatforms,
         nextAiringEpisode: null,
         relations: { edges: [] },
@@ -2264,11 +2271,14 @@
       });
     }
 
-    const studioName = String(media?.studios?.nodes?.[0]?.name || '').toLowerCase();
-    if (studioName) {
-      for (const p of PLATFORM_CONFIG) {
-        if (p.aliases.some(a => studioName.includes(a))) {
-          found.add(p.id);
+    // Only infer from studioName if this item does NOT already have verified US streaming data
+    if (!media?._verifiedStreaming) {
+      const studioName = String(media?.studios?.nodes?.[0]?.name || '').toLowerCase();
+      if (studioName) {
+        for (const p of PLATFORM_CONFIG) {
+          if (p.aliases.some(a => a.length >= 4 && studioName.includes(a))) {
+            found.add(p.id);
+          }
         }
       }
     }
@@ -2341,9 +2351,21 @@
       upsertLink(plat ? plat.id : s.name, plat ? plat.name : s.name, s.url, plat?.color, true, Boolean(plat?.freeWithAds));
     }
 
-    // 4. All detected platforms (including custom overrides & TMDB providers) get a direct service link
-    const detected = detectPlatforms(media, extraStreaming);
-    for (const p of detected) {
+    // 4. Add service links for user's explicit Custom Streaming Overrides & live TMDB extraStreaming
+    const state = getState();
+    const id = Number(media?.id);
+    const ovr = (id && (state.overrides[id] || state.watchlist[id])) || null;
+    const extraPids = new Set(ovr?.customPlatforms || []);
+    for (const name of (extraStreaming || [])) {
+      const lower = String(name || '').toLowerCase();
+      if (lower.includes('channel') || lower.includes('youtube tv')) continue;
+      for (const p of PLATFORM_CONFIG) {
+        if (p.aliases.some(a => a.length >= 4 && lower.includes(a))) extraPids.add(p.id);
+      }
+    }
+    for (const pid of extraPids) {
+      const p = PLATFORM_BY_ID[pid];
+      if (!p) continue;
       const url = bakedMap[p.id] || (p.searchUrl ? p.searchUrl(title) : '');
       if (url) {
         upsertLink(p.id, p.name, url, p.color, Boolean(bakedMap[p.id]), Boolean(p.freeWithAds));

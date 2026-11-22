@@ -61,7 +61,7 @@
       domains: ['max.com', 'hbomax.com', 'hbo.com'],
       color: '#818cf8',
       freeWithAds: false,
-      searchUrl: t => `https://play.max.com/search/result?q=${encodeURIComponent(t)}`
+      searchUrl: t => `https://www.hbomax.com/search?q=${encodeURIComponent(t)}`
     },
     {
       id: 'hulu',

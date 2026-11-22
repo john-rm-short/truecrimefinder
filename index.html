@@ -349,6 +349,7 @@
 
   <script src="./catalog-data.js"></script>
   <script src="./imdb-catalog.js"></script>
+  <script src="./streaming-links.js"></script>
   <script src="./shared-core.js"></script>
   <script>
     (function () {
@@ -451,6 +452,7 @@
               const title = AF.getDisplayTitle(m);
               const wl = AF.getState().watchlist[m.id];
               const caseSt = AF.classifyDub(m);
+              const plats = AF.detectPlatforms(m);
               return `
                 <div class="search-item" data-id="${m.id}" role="option">
                   <img src="${AF.escapeHtml(AF.getCover(m))}" alt="">
@@ -460,6 +462,7 @@
                       ${AF.escapeHtml(m.format || '')} ${m.seasonYear ? '· ' + m.seasonYear : ''} · <span style="color:var(--cyan);">${AF.escapeHtml(caseSt)}</span> ${m.averageScore ? '· ★ ' + m.averageScore + '%' : ''}
                       ${wl ? `· <span style="color:var(--emerald);">${AF.escapeHtml(wl.status)}</span>` : ''}
                     </div>
+                    ${plats.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">${plats.slice(0, 4).map(p => `<span class="platform-tag" style="color:${p.color};border-color:${p.color}55;">${AF.escapeHtml(p.name)}</span>`).join('')}</div>` : ''}
                   </div>
                   <a class="btn btn-xs btn-cyan" href="./vibe-graph.html?seed=${m.id}" onclick="event.stopPropagation();">Graph</a>
                   <a class="btn btn-xs" href="./eclectic-lab.html?tab=arithmetic&seed=${m.id}" onclick="event.stopPropagation();">± Arith</a>
@@ -629,7 +632,7 @@
 
         const query = `query ($start: Int, $end: Int) { past72h { airingSchedules } activeOnas { media } catalog { media } }`;
         try {
-          const cacheKey = forceRefresh ? null : `tc_releases_v6_${activePlatform}`;
+          const cacheKey = forceRefresh ? null : `tc_releases_v7_${activePlatform}`;
           const data = await AF.anilistQuery(query, { start: start72h, end: nowSec, platform: activePlatform }, { cacheKey, ttl: AF.TTL_DYNAMIC });
 
           const mergedMap = new Map();

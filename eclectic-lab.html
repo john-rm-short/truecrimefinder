@@ -183,6 +183,7 @@
 
   <script src="./catalog-data.js"></script>
   <script src="./imdb-catalog.js"></script>
+  <script src="./streaming-links.js"></script>
   <script src="./shared-core.js"></script>
   <script>
     (function () {
@@ -227,6 +228,7 @@
         const leadStudio = media.studios?.nodes?.[0]?.name || '';
         const subTags = AF.getTopSubgenreTags(media, 2);
         const caseSt = AF.classifyDub(media);
+        const platforms = AF.detectPlatforms(media);
         return `
           <article class="anime-card" tabindex="0" data-id="${media.id}">
             <div class="anime-card-cover-wrap">
@@ -251,6 +253,12 @@
                 <a href="./vibe-graph.html?seed=${media.id}" onclick="event.stopPropagation();" style="font-size:11px;flex-shrink:0;">Graph ↗</a>
               </div>
               ${subTags.length ? `<div style="font-size:10.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subTags.map(t => '#' + AF.escapeHtml(t)).join(' · ')}</div>` : ''}
+              ${platforms.length ? `
+                <div class="anime-card-platforms">
+                  ${platforms.slice(0, 3).map(p => `<span class="platform-tag" style="color:${p.color};border-color:${p.color}55;">${AF.escapeHtml(p.name)}</span>`).join('')}
+                  ${platforms.length > 3 ? `<span class="platform-tag">+${platforms.length - 3}</span>` : ''}
+                </div>
+              ` : ''}
             </div>
           </article>
         `;

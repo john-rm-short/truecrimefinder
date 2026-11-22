@@ -49,7 +49,8 @@
       aliases: ['netflix'],
       domains: ['netflix.com'],
       color: '#ef4444',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.netflix.com/search?q=${encodeURIComponent(t)}`
     },
     {
       id: 'max',
@@ -57,9 +58,10 @@
       licensedBy: 'HBO',
       licensedByValues: ['HBO', 'Max', 'HBO Documentary Films', 'HBO Max'],
       aliases: ['hbo', 'max', 'hbo max', 'hbo documentary'],
-      domains: ['max.com', 'hbo.com'],
+      domains: ['max.com', 'hbomax.com', 'hbo.com'],
       color: '#818cf8',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://play.max.com/search/result?q=${encodeURIComponent(t)}`
     },
     {
       id: 'hulu',
@@ -69,7 +71,8 @@
       aliases: ['hulu', 'abc news', '20/20', 'fx'],
       domains: ['hulu.com'],
       color: '#34d399',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.hulu.com/search?q=${encodeURIComponent(t)}`
     },
     {
       id: 'peacock',
@@ -79,17 +82,19 @@
       aliases: ['peacock', 'nbc', 'dateline'],
       domains: ['peacocktv.com', 'nbc.com'],
       color: '#38bdf8',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.peacocktv.com/watch/search?q=${encodeURIComponent(t)}`
     },
     {
       id: 'id',
       name: 'Investigation Discovery',
       licensedBy: 'Investigation Discovery',
       licensedByValues: ['Investigation Discovery', 'ID', 'Discovery+'],
-      aliases: ['investigation discovery', 'discovery+', 'id channel'],
+      aliases: ['investigation discovery', 'discovery+', 'discovery plus', 'id channel'],
       domains: ['investigationdiscovery.com', 'discoveryplus.com'],
       color: '#f97316',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.discoveryplus.com/search?q=${encodeURIComponent(t)}`
     },
     {
       id: 'oxygen',
@@ -99,7 +104,8 @@
       aliases: ['oxygen', 'oxygen true crime'],
       domains: ['oxygen.com'],
       color: '#ec4899',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.oxygen.com/search?search=${encodeURIComponent(t)}`
     },
     {
       id: 'paramount',
@@ -109,17 +115,19 @@
       aliases: ['paramount+', 'paramount plus', 'cbs', '48 hours', 'showtime'],
       domains: ['paramountplus.com', 'cbsnews.com'],
       color: '#60a5fa',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.paramountplus.com/search/?q=${encodeURIComponent(t)}`
     },
     {
       id: 'prime',
       name: 'Prime Video',
       licensedBy: 'Prime Video',
       licensedByValues: ['Prime Video', 'Amazon Studios', 'Amazon Prime Video'],
-      aliases: ['amazon', 'prime video', 'amazon prime'],
-      domains: ['amazon.com', 'primevideo.com'],
+      aliases: ['amazon', 'prime video', 'amazon prime', 'freevee'],
+      domains: ['amazon.com', 'primevideo.com', 'watch.amazon.com'],
       color: '#0ea5e9',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://www.amazon.com/s?k=${encodeURIComponent(t)}&i=instant-video`
     },
     {
       id: 'appletv',
@@ -129,7 +137,8 @@
       aliases: ['apple tv+', 'apple tv'],
       domains: ['tv.apple.com'],
       color: '#a855f7',
-      freeWithAds: false
+      freeWithAds: false,
+      searchUrl: t => `https://tv.apple.com/us/search?term=${encodeURIComponent(t)}`
     },
     {
       id: 'tubi',
@@ -139,7 +148,8 @@
       aliases: ['tubi', 'tubi tv', 'filmrise'],
       domains: ['tubitv.com'],
       color: '#c084fc',
-      freeWithAds: true
+      freeWithAds: true,
+      searchUrl: t => `https://tubitv.com/search/${encodeURIComponent(t)}`
     },
     {
       id: 'pluto',
@@ -149,7 +159,8 @@
       aliases: ['pluto', 'pluto tv', 'a&e', 'court tv'],
       domains: ['pluto.tv', 'aetv.com'],
       color: '#fbbf24',
-      freeWithAds: true
+      freeWithAds: true,
+      searchUrl: t => `https://pluto.tv/us/search?q=${encodeURIComponent(t)}`
     },
     {
       id: 'youtube',
@@ -159,7 +170,8 @@
       aliases: ['youtube', 'youtu.be'],
       domains: ['youtube.com', 'youtu.be'],
       color: '#f87171',
-      freeWithAds: true
+      freeWithAds: true,
+      searchUrl: t => `https://www.youtube.com/results?search_query=${encodeURIComponent(t + ' documentary')}`
     },
     {
       id: 'podcasts',
@@ -169,7 +181,8 @@
       aliases: ['podcast', 'apple podcasts', 'spotify', 'wondery', 'serial', 'prx', 'nhpr', 'apm'],
       domains: ['podcasts.apple.com', 'open.spotify.com'],
       color: '#10b981',
-      freeWithAds: true
+      freeWithAds: true,
+      searchUrl: t => `https://podcasts.apple.com/us/search?term=${encodeURIComponent(t)}`
     }
   ];
 
@@ -1156,15 +1169,26 @@
         isMediaSpoiler: false,
         isGeneralSpoiler: false
       })),
-      externalLinks: (item.platforms || []).map(pid => {
-        const p = PLATFORM_BY_ID[pid];
-        return p ? {
-          site: p.name,
-          url: `https://www.justwatch.com/us/search?q=${encodeURIComponent(item.title)}`,
-          type: 'STREAMING'
-        } : null;
-      }).filter(Boolean),
-      _matchedPlatforms: item.platforms || [],
+      externalLinks: (() => {
+        const directMap = (global.TRUECRIME_STREAMING_LINKS && global.TRUECRIME_STREAMING_LINKS[String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')]) || {};
+        const pids = Array.from(new Set([...(item.platforms || []), ...Object.keys(directMap)]));
+        return pids.map(pid => {
+          const p = PLATFORM_BY_ID[pid];
+          if (!p) return null;
+          const directUrl = directMap[pid];
+          return {
+            site: p.name,
+            platformId: pid,
+            url: directUrl || (p.searchUrl ? p.searchUrl(item.title) : `https://www.justwatch.com/us/search?q=${encodeURIComponent(item.title)}`),
+            isDirect: Boolean(directUrl),
+            type: 'STREAMING'
+          };
+        }).filter(Boolean);
+      })(),
+      _matchedPlatforms: (() => {
+        const directMap = (global.TRUECRIME_STREAMING_LINKS && global.TRUECRIME_STREAMING_LINKS[String(item.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')]) || {};
+        return Array.from(new Set([...(item.platforms || []), ...Object.keys(directMap)])).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
+      })(),
       nextAiringEpisode: item.nextAiringEpisode || null,
       relations: { edges: [] },
       characters: { edges: [] },
@@ -1195,6 +1219,19 @@
         if (row.poster && String(existing.coverImage?.large || '').startsWith('data:image/svg+xml')) {
           existing.coverImage = { large: row.poster, medium: row.poster, color: '#f59e0b' };
         }
+        if (row.streamUrls && typeof row.streamUrls === 'object') {
+          existing._matchedPlatforms = Array.from(new Set([...(existing._matchedPlatforms || []), ...Object.keys(row.streamUrls)])).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
+          for (const [pid, sUrl] of Object.entries(row.streamUrls)) {
+            const p = PLATFORM_BY_ID[pid];
+            if (!p || !sUrl) continue;
+            const prev = (existing.externalLinks || []).find(l => l.platformId === pid || String(l.site || '').toLowerCase() === p.name.toLowerCase());
+            if (prev) {
+              if (!prev.isDirect) { prev.url = sUrl; prev.isDirect = true; prev.platformId = pid; }
+            } else {
+              existing.externalLinks = [...(existing.externalLinks || []), { site: p.name, platformId: pid, url: sUrl, isDirect: true, type: 'STREAMING' }];
+            }
+          }
+        }
         continue;
       }
       const isTv = row.type === 'tvSeries' || row.type === 'tvMiniSeries';
@@ -1218,6 +1255,23 @@
 
       const posterUri = row.poster || makeDossierPosterDataUri(row.title, `IMDb ★ ${row.imdbRating} · ${row.year}`, '#f59e0b', isTv ? 'IMDB SERIES' : 'IMDB FILM');
       const directors = row.director ? row.director.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const rowStreamUrls = (row.streamUrls && typeof row.streamUrls === 'object')
+        ? row.streamUrls
+        : ((global.TRUECRIME_STREAMING_LINKS && global.TRUECRIME_STREAMING_LINKS[normKey]) || {});
+      const rowPlatforms = Array.from(new Set([...(row.platforms || []), ...Object.keys(rowStreamUrls)])).filter(pid => Boolean(PLATFORM_BY_ID[pid]));
+      const primaryPlat = rowPlatforms.length ? PLATFORM_BY_ID[rowPlatforms[0]] : null;
+      const streamExtLinks = rowPlatforms.map(pid => {
+        const p = PLATFORM_BY_ID[pid];
+        if (!p) return null;
+        const directUrl = rowStreamUrls[pid];
+        return {
+          site: p.name,
+          platformId: pid,
+          url: directUrl || (p.searchUrl ? p.searchUrl(row.title) : `https://www.justwatch.com/us/search?q=${encodeURIComponent(row.title)}`),
+          isDirect: Boolean(directUrl),
+          type: 'STREAMING'
+        };
+      }).filter(Boolean);
       const node = {
         id,
         idMal: id,
@@ -1246,13 +1300,13 @@
         isAdult: false,
         description: row.plot || `IMDb-verified True Crime ${isTv ? 'Docuseries' : 'Documentary Film'} (${row.year}) rated ★ ${row.imdbRating}/10 across ${Number(row.imdbVotes || 0).toLocaleString()} IMDb user votes.`,
         trailer: null,
-        studios: { nodes: [{ id: id + 1, name: 'IMDb True Crime Index' }] },
+        studios: { nodes: [{ id: id + 1, name: primaryPlat ? primaryPlat.name : 'IMDb True Crime Index' }] },
         tags: inferredTags,
         externalLinks: [
           { site: 'IMDb', url: `https://www.imdb.com/title/${row.imdbId}/`, type: 'INFO' },
-          { site: 'JustWatch US', url: `https://www.justwatch.com/us/search?q=${encodeURIComponent(row.title)}`, type: 'STREAMING' }
+          ...streamExtLinks
         ],
-        _matchedPlatforms: [],
+        _matchedPlatforms: rowPlatforms,
         nextAiringEpisode: null,
         relations: { edges: [] },
         characters: { edges: [] },
@@ -2231,34 +2285,71 @@
     return Array.from(found).map(pid => PLATFORM_BY_ID[pid]).filter(Boolean);
   }
 
-  function getStreamingLinks(media, extraLinks = []) {
+  function getStreamingLinks(media, extraLinks = [], extraStreaming = []) {
     const out = [];
-    const seen = new Set();
-    const addLink = (name, url, color) => {
+    const byKey = new Map();
+    const title = getDisplayTitle(media);
+    const normKey = String(title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const bakedMap = (global.TRUECRIME_STREAMING_LINKS && global.TRUECRIME_STREAMING_LINKS[normKey]) || {};
+
+    const upsertLink = (key, name, url, color, isDirect = false, freeWithAds = false) => {
       if (!url || !/^https?:\/\//i.test(url)) return;
-      const key = name.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      out.push({ name, url, color: color || '#38bdf8' });
+      if (/justwatch\.com/i.test(url) && !isDirect) return;
+      const k = String(key || name).toLowerCase();
+      const existing = byKey.get(k);
+      if (existing) {
+        if (!existing.isDirect && isDirect) {
+          existing.url = url;
+          existing.isDirect = true;
+        }
+        return;
+      }
+      const entry = { name, url, color: color || '#38bdf8', isDirect, freeWithAds };
+      byKey.set(k, entry);
+      out.push(entry);
     };
 
+    // 1. Verified direct URLs baked in streaming-links.js
+    for (const [pid, directUrl] of Object.entries(bakedMap)) {
+      const p = PLATFORM_BY_ID[pid];
+      if (p && directUrl) {
+        upsertLink(p.id, p.name, directUrl, p.color, true, Boolean(p.freeWithAds));
+      }
+    }
+
+    // 2. Explicit streaming externalLinks on the media object
     for (const l of (media?.externalLinks || [])) {
       const site = String(l.site || '').trim();
-      if (!site || !l.url) continue;
-      const plat = PLATFORM_CONFIG.find(p =>
+      if (!site || !l.url || site.toLowerCase().includes('justwatch')) continue;
+      const plat = (l.platformId && PLATFORM_BY_ID[l.platformId]) || PLATFORM_CONFIG.find(p =>
         p.aliases.some(a => site.toLowerCase().includes(a)) ||
         p.domains.some(d => String(l.url).toLowerCase().includes(d))
       );
       if (plat || l.type === 'STREAMING') {
-        addLink(plat ? plat.name : site, l.url, plat?.color);
+        const direct = Boolean(l.isDirect) || (!/search/i.test(l.url) && !/justwatch/i.test(l.url));
+        upsertLink(plat ? plat.id : site, plat ? plat.name : site, l.url, plat?.color, direct, Boolean(plat?.freeWithAds));
       }
     }
 
-    for (const s of extraLinks) {
+    // 3. Live extra links (e.g. TVMaze officialSite, Apple Podcasts collectionViewUrl)
+    for (const s of (extraLinks || [])) {
       if (!s?.name || !s?.url) continue;
-      const plat = PLATFORM_CONFIG.find(p => p.aliases.some(a => s.name.toLowerCase().includes(a)));
-      addLink(plat ? plat.name : s.name, s.url, plat?.color);
+      const plat = PLATFORM_CONFIG.find(p =>
+        p.aliases.some(a => s.name.toLowerCase().includes(a)) ||
+        p.domains.some(d => String(s.url).toLowerCase().includes(d))
+      );
+      upsertLink(plat ? plat.id : s.name, plat ? plat.name : s.name, s.url, plat?.color, true, Boolean(plat?.freeWithAds));
     }
+
+    // 4. All detected platforms (including custom overrides & TMDB providers) get a direct service link
+    const detected = detectPlatforms(media, extraStreaming);
+    for (const p of detected) {
+      const url = bakedMap[p.id] || (p.searchUrl ? p.searchUrl(title) : '');
+      if (url) {
+        upsertLink(p.id, p.name, url, p.color, Boolean(bakedMap[p.id]), Boolean(p.freeWithAds));
+      }
+    }
+
     return out;
   }
 
@@ -3760,6 +3851,10 @@
 
     const ytTrailerId = media.trailer?.site === 'youtube' ? media.trailer.id : null;
     const justWatchUrl = `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`;
+    const initialStreamLinks = getStreamingLinks(media);
+    const renderStreamChipsHtml = (links) => links.length
+      ? links.map(s => `<a class="stream-link-chip" href="${escapeHtml(safeUrl(s.url))}" target="_blank" rel="noopener noreferrer" title="${s.isDirect ? 'Open directly on ' + escapeHtml(s.name) : 'Search on ' + escapeHtml(s.name)}" style="border-color:${s.color};color:${s.color};">▶ ${escapeHtml(s.name)}${s.freeWithAds ? ' (Free)' : ''} ↗</a>`).join('')
+      : `<span style="font-size:12px;color:var(--text-dim);">No US streaming service indexed yet — check JustWatch US below or add a custom override</span>`;
     const cleanSynopsis = stripHtml(media.description || '').trim() || 'No case summary available.';
     const isLongSynopsis = cleanSynopsis.length > 260;
 
@@ -3776,6 +3871,10 @@
             <span class="badge badge-cyan" id="af-modal-dub-badge" title="Case Status / Release Classification">${escapeHtml(dubLabel)}</span>
             ${freeAds ? `<span class="badge badge-amber">Free / Podcast</span>` : ''}
             <span class="badge badge-muted">Reach: ${formatCompactNumber(media.popularity)}</span>
+          </div>
+          <div class="meta-row" id="af-modal-stream-bar" style="gap:6px;align-items:center;">
+            <span style="font-size:11.5px;color:var(--text-dim);font-weight:700;">WATCH / STREAM ON:</span>
+            ${renderStreamChipsHtml(initialStreamLinks)}
           </div>
           <div style="font-size:12.5px;color:var(--text-muted);">
             <strong>Network / Producer:</strong> ${studiosHtml} &nbsp;•&nbsp; <strong>Categories:</strong> ${escapeHtml((media.genres || []).join(', ') || 'True Crime')}
@@ -3995,12 +4094,20 @@
       }
     };
 
+    const refreshHeroStreamBar = (extraLinks = [], extraStreamNames = []) => {
+      const bar = bodyEl.querySelector('#af-modal-stream-bar');
+      if (!bar) return;
+      const links = getStreamingLinks(media, extraLinks, extraStreamNames);
+      bar.innerHTML = `<span style="font-size:11.5px;color:var(--text-dim);font-weight:700;">WATCH / STREAM ON:</span>${renderStreamChipsHtml(links)}`;
+    };
+
     bodyEl.querySelectorAll('#af-custom-platforms [data-pid]').forEach(btn => {
       btn.addEventListener('click', () => {
         const pid = btn.dataset.pid;
         if (customSet.has(pid)) { customSet.delete(pid); btn.classList.remove('active'); }
         else { customSet.add(pid); btn.classList.add('active'); }
         scheduleModalAutoSave('overrides', true);
+        refreshHeroStreamBar();
       });
     });
     const freeBtn = bodyEl.querySelector('#af-custom-free-ads');
@@ -4103,7 +4210,8 @@
       const extraLinks = [];
       if (multi.tvmaze?.officialSite) extraLinks.push({ name: multi.tvmaze.network || 'Official Site', url: multi.tvmaze.officialSite });
       if (multi.itunes?.url) extraLinks.push({ name: 'Apple Podcasts', url: multi.itunes.url });
-      const streamLinks = getStreamingLinks(media, extraLinks);
+      const streamLinks = getStreamingLinks(media, extraLinks, extraStreamNames);
+      refreshHeroStreamBar(extraLinks, extraStreamNames);
 
       const resolvedImdbId = multi.omdb?.imdbID || media.imdbId || multi.tvmaze?.imdb || '';
       if (resolvedImdbId) {

@@ -154,6 +154,7 @@
 
   <script src="./catalog-data.js"></script>
   <script src="./imdb-catalog.js"></script>
+  <script src="./streaming-links.js"></script>
   <script src="./shared-core.js"></script>
   <script>
     (function () {
@@ -773,6 +774,16 @@
             <a class="btn btn-xs" href="./eclectic-lab.html?tab=arithmetic&seed=${a.id}">± Arithmetic</a>
             <button type="button" class="btn btn-xs" id="insFullModalBtn">Full Dossier</button>
           </div>
+          ${(() => {
+            const sLinks = AF.getStreamingLinks(a);
+            if (!sLinks.length) return '';
+            return `
+              <div class="meta-row" style="gap:5px;align-items:center;">
+                <span style="font-size:10.5px;color:var(--text-dim);font-weight:700;">STREAM ON:</span>
+                ${sLinks.map(s => `<a class="stream-link-chip" href="${AF.escapeHtml(AF.safeUrl(s.url))}" target="_blank" rel="noopener noreferrer" style="border-color:${s.color};color:${s.color};padding:2px 8px;font-size:11px;">▶ ${AF.escapeHtml(s.name)}${s.freeWithAds ? ' (Free)' : ''} ↗</a>`).join('')}
+              </div>
+            `;
+          })()}
 
           ${(() => {
             const cleanSyn = AF.stripHtml(a.description || '').trim() || 'No dossier summary available.';

@@ -342,8 +342,11 @@
       });
 
       function getVisibleNodes() {
-        if (!gemCeiling) return nodes;
-        return nodes.filter(n => n.isSeed || (n.anime.popularity || 0) <= gemCeiling);
+        return nodes.filter(n => {
+          if (gemCeiling && !n.isSeed && (n.anime.popularity || 0) > gemCeiling) return false;
+          if (!AF.matchesStreamingFilter(n.anime)) return false;
+          return true;
+        });
       }
 
       function recomputeGraphSimilarity() {
@@ -489,7 +492,8 @@
           simAlpha = 0.85;
         }
 
-        document.getElementById('graphCountBadge').textContent = `${vis.length} cases · ${edges.length} links`;
+        const sf = AF.getStreamingFilterSummary();
+        document.getElementById('graphCountBadge').textContent = `${vis.length}${vis.length !== nodes.length ? '/' + nodes.length : ''} cases · ${edges.length} links${sf ? ' · ' + sf : ''}`;
         renderNodeTable();
         if (selectedId) renderInspector(selectedId);
         requestDraw();
@@ -1370,6 +1374,12 @@
         const isEditingInspector = ['insWlStatus', 'insWlRating', 'insWlProg', 'insWlNotes'].includes(activeId);
         if (selectedId && !isEditingInspector) renderInspector(selectedId);
         renderNodeTable();
+        requestDraw();
+      });
+
+      AF.onStreamingFilterChange(() => {
+        recomputeGraphSimilarity();
+        fitToView();
         requestDraw();
       });
 

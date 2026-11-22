@@ -71,7 +71,6 @@
             <button type="button" class="btn btn-sm" id="refreshReleasesBtn">↻ Refresh</button>
           </div>
         </div>
-        <div class="pills-row" id="platformFilterBar" aria-label="Streaming network filters"></div>
       </div>
       <div id="releasesMeta" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;"></div>
       <div id="releasesGrid" class="anime-grid"></div>
@@ -443,9 +442,11 @@
           searchDropdown.innerHTML = `<div style="padding:14px;color:var(--text-muted);"><span class="spinner"></span> Searching Case Catalog, TVMaze &amp; Apple Podcasts...</div>`;
           searchDropdown.classList.add('open');
           try {
-            const results = await AF.searchAnimeQuick(q, 8);
+            const rawResults = await AF.searchAnimeQuick(q, 16);
+            const results = rawResults.filter(m => AF.matchesStreamingFilter(m)).slice(0, 8);
             if (!results.length) {
-              searchDropdown.innerHTML = `<div style="padding:14px;color:var(--text-muted);">No case files matched "${AF.escapeHtml(q)}".</div>`;
+              const sf = AF.getStreamingFilterSummary();
+              searchDropdown.innerHTML = `<div style="padding:14px;color:var(--text-muted);">No case files matched "${AF.escapeHtml(q)}"${sf ? ` on <strong>${AF.escapeHtml(sf)}</strong>. Click <strong>Clear (All Services)</strong> above to search all networks.` : '.'}</div>`;
               return;
             }
             searchDropdown.innerHTML = results.map(m => {
@@ -602,24 +603,7 @@
       // TAB 1: RELEASES & NETWORKS
       // ----------------------------------------------------------------------
       function renderPlatformFilterBar() {
-        const bar = document.getElementById('platformFilterBar');
-        bar.innerHTML = `
-          <button type="button" class="pill ${activePlatform === 'all' ? 'active' : ''}" data-pf="all">All Networks</button>
-          <button type="button" class="pill ${activePlatform === 'free' ? 'active' : ''}" data-pf="free">★ Free / Podcasts</button>
-          ${AF.PLATFORM_CONFIG.map(p => `
-            <button type="button" class="pill ${activePlatform === p.id ? 'active' : ''}" data-pf="${p.id}">
-              <span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block;"></span>
-              ${AF.escapeHtml(p.name)}
-            </button>
-          `).join('')}
-        `;
-        bar.querySelectorAll('.pill').forEach(btn => {
-          btn.addEventListener('click', () => {
-            activePlatform = btn.dataset.pf;
-            renderPlatformFilterBar();
-            loadReleases();
-          });
-        });
+        // Streaming multi-select filter now lives in the shared top bar across all pages
       }
 
       async function loadReleases(forceRefresh = false) {
@@ -632,8 +616,8 @@
 
         const query = `query ($start: Int, $end: Int) { past72h { airingSchedules } activeOnas { media } catalog { media } }`;
         try {
-          const cacheKey = forceRefresh ? null : `tc_releases_v8_${activePlatform}`;
-          const data = await AF.anilistQuery(query, { start: start72h, end: nowSec, platform: activePlatform }, { cacheKey, ttl: AF.TTL_DYNAMIC });
+          const cacheKey = forceRefresh ? null : `tc_releases_v8_all`;
+          const data = await AF.anilistQuery(query, { start: start72h, end: nowSec, platform: 'all' }, { cacheKey, ttl: AF.TTL_DYNAMIC });
 
           const mergedMap = new Map();
           for (const sched of (data?.past72h?.airingSchedules || [])) {
@@ -666,12 +650,7 @@
         const filtered = releasesCache.filter(m => {
           if (usOnly && m.countryOfOrigin && m.countryOfOrigin !== 'US') return false;
           const extra = tmdbExtraByAnimeId.get(m.id) || [];
-          const platforms = AF.detectPlatforms(m, extra);
-          if (activePlatform === 'free') {
-            if (!AF.isFreeWithAds(m, platforms)) return false;
-          } else if (activePlatform !== 'all') {
-            if (!platforms.some(p => p.id === activePlatform)) return false;
-          }
+          if (!AF.matchesStreamingFilter(m, extra)) return false;
           const caseSt = AF.classifyDub(m).toLowerCase();
           if (activeDubFilter === 'solved' && !caseSt.includes('solved') && !caseSt.includes('simul')) return false;
           if (activeDubFilter === 'cold' && !caseSt.includes('cold') && !caseSt.includes('unsolved')) return false;
@@ -687,7 +666,8 @@
           return true;
         });
 
-        meta.textContent = `Showing ${filtered.length} case dossiers (${activePlatform === 'all' ? 'All 12 Crime Networks & Podcasts' : activePlatform === 'free' ? 'Free Streaming & True Crime Podcasts' : AF.PLATFORM_BY_ID[activePlatform]?.name + ' Catalog'}${usOnly ? ' · US Cases only' : ''})`;
+        const sfSummary = AF.getStreamingFilterSummary();
+        meta.textContent = `Showing ${filtered.length} case dossiers (${sfSummary || 'All Streaming Services & Podcasts'}${usOnly ? ' · US Cases only' : ''})`;
 
         if (!filtered.length) {
           grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No case files matched the current network/case status filters. Try switching filters or adding custom overrides in the Case Detail Modal.</div>`;
@@ -804,6 +784,7 @@
 
         for (const item of scheduleCache) {
           if (!item.media) continue;
+          if (!AF.matchesStreamingFilter(item.media)) continue;
           if (usOnly && item.media.countryOfOrigin && item.media.countryOfOrigin !== 'US') continue;
           if (wlOnly && !wl[item.media.id]) continue;
           const dt = new Date(item.airingAt * 1000);
@@ -949,6 +930,7 @@
         let filtered = wlFilterStatus === 'All'
           ? items
           : items.filter(it => AF.normalizeStatus(it.status) === wlFilterStatus);
+        filtered = filtered.filter(it => AF.matchesStreamingFilter(it));
 
         filtered.sort((a, b) => {
           if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
@@ -1208,12 +1190,12 @@
       // ----------------------------------------------------------------------
       async function loadUpcomingRadar() {
         const grid = document.getElementById('upcomingGrid');
-        const list = AF.CANONICAL_DOSSIER_LIST.slice(0, 16);
+        const list = AF.CANONICAL_DOSSIER_LIST.filter(m => AF.matchesStreamingFilter(m)).slice(0, 16);
         const byId = new Map(list.map(m => [m.id, m]));
-        grid.innerHTML = list.map(m => {
+        grid.innerHTML = list.length ? list.map(m => {
           const caseSt = AF.classifyDub(m);
           return renderAnimeCard(m, { airingBadge: `<span class="badge badge-purple">${AF.escapeHtml(caseSt)}</span>` });
-        }).join('');
+        }).join('') : `<div class="empty-state" style="grid-column:1/-1;">No case files on the selected streaming services. Click <strong>Clear (All Services)</strong> above.</div>`;
         attachCardHandlers(grid, byId);
       }
 
@@ -1427,6 +1409,7 @@
             (eraTag && (m.tags || []).some(t => t.name === eraTag));
           if (!yrMatch) return false;
           if (format && m.format !== format) return false;
+          if (!AF.matchesStreamingFilter(m)) return false;
           return true;
         });
 
@@ -1459,6 +1442,7 @@
             return;
           }
           let mainList = (studio.p1?.edges || []).map(e => e.node).filter(Boolean);
+          mainList = mainList.filter(m => AF.matchesStreamingFilter(m));
           const entryOnly = document.getElementById('archiveEntryPointsOnly')?.checked;
           if (entryOnly) mainList = mainList.filter(m => !AF.isSequelOrRecap(m));
 
@@ -1477,6 +1461,17 @@
         if (activeTab === 'saved') renderSavedTab();
         else if (activeTab === 'releases' && releasesCache.length) renderReleasesGrid();
         else if (activeTab === 'schedule' && scheduleCache.length) renderScheduleGrid();
+      });
+
+      AF.onStreamingFilterChange(() => {
+        if (activeTab === 'releases') renderReleasesGrid();
+        else if (activeTab === 'schedule') renderScheduleGrid();
+        else if (activeTab === 'saved') renderSavedTab();
+        else if (activeTab === 'radar') loadUpcomingRadar();
+        else if (activeTab === 'archives') {
+          if (archiveMode === 'year') loadYearArchive();
+          else loadStudioArchive(document.getElementById('studioSearchInput').value.trim() || 'HBO Documentary Films');
+        }
       });
 
       document.getElementById('archiveEntryPointsOnly').addEventListener('change', () => {

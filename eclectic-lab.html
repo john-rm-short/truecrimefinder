@@ -383,7 +383,13 @@
         const grid = document.getElementById('vibeMapGrid');
         const meta = document.getElementById('vibeMapMeta');
 
-        let pool = [...AF.CANONICAL_DOSSIER_LIST];
+        let pool = AF.CANONICAL_DOSSIER_LIST.filter(m => AF.matchesStreamingFilter(m));
+        if (!pool.length) {
+          const sf = AF.getStreamingFilterSummary();
+          meta.textContent = `0 case dossiers matched (${sf})`;
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No case dossiers available on <strong>${AF.escapeHtml(sf)}</strong>. Click <strong>Clear (All Services)</strong> above to see all titles.</div>`;
+          return;
+        }
         if (mapped.maxPopularity) {
           const sub = pool.filter(m => (m.popularity || 0) <= mapped.maxPopularity);
           if (sub.length >= 4) pool = sub;
@@ -636,10 +642,11 @@
         const bucketsBar = document.getElementById('auteurBucketsBar');
         const grid = document.getElementById('auteurGrid');
 
+        const streamFiltered = currentAuteurCredits.filter(c => AF.matchesStreamingFilter(c.media));
         const counts = {};
         CRAFT_BUCKETS.forEach(b => { counts[b] = 0; });
-        counts['All Credits'] = currentAuteurCredits.length;
-        currentAuteurCredits.forEach(c => {
+        counts['All Credits'] = streamFiltered.length;
+        streamFiltered.forEach(c => {
           c.buckets.forEach(b => { counts[b] = (counts[b] || 0) + 1; });
         });
 
@@ -656,8 +663,8 @@
         });
 
         const filtered = activeBucket === 'All Credits'
-          ? currentAuteurCredits
-          : currentAuteurCredits.filter(c => c.buckets.has(activeBucket));
+          ? streamFiltered
+          : streamFiltered.filter(c => c.buckets.has(activeBucket));
 
         const pickRole = (c) => {
           if (activeBucket !== 'All Credits' && c.rolesByBucket?.[activeBucket]?.length) {
@@ -795,6 +802,7 @@
 
         const entryOnly = document.getElementById('arithEntryPointsOnly')?.checked;
         const pool = AF.CANONICAL_DOSSIER_LIST.filter(m => {
+          if (!AF.matchesStreamingFilter(m)) return false;
           if (dna.seedIds.has(m.id)) return false;
           if (entryOnly && AF.isSequelOrRecap(m)) return false;
           if ((m.genres || []).some(g => negG.has(g.toLowerCase()))) return false;
@@ -968,7 +976,12 @@
         const genre = document.getElementById('rouletteGenreSelect').value;
 
         if (refetch || !roulettePool.length) {
-          let pool = [...AF.CANONICAL_DOSSIER_LIST];
+          let pool = AF.CANONICAL_DOSSIER_LIST.filter(m => AF.matchesStreamingFilter(m));
+          if (!pool.length) {
+            const sf = AF.getStreamingFilterSummary();
+            stage.innerHTML = `<div class="empty-state">No case dossiers available on <strong>${AF.escapeHtml(sf)}</strong>. Click <strong>Clear (All Services)</strong> above to see all titles.</div>`;
+            return;
+          }
           if (popMax) {
             const sub = pool.filter(m => (m.popularity || 0) <= popMax);
             if (sub.length >= 4) pool = sub;
@@ -1099,6 +1112,13 @@
 
       AF.onStateChange(() => {
         if (activeTab === 'roulette' && currentRoulette) renderRouletteCard();
+      });
+
+      AF.onStreamingFilterChange(() => {
+        if (activeTab === 'vibe-map') runQuadrantQuery();
+        else if (activeTab === 'auteur') renderAuteurCredits();
+        else if (activeTab === 'arithmetic') solveEquation();
+        else if (activeTab === 'roulette') rollRoulette(true);
       });
 
       const params = new URLSearchParams(window.location.search);

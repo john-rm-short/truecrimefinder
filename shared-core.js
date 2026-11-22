@@ -1638,6 +1638,7 @@
   // --------------------------------------------------------------------------
   const stateListeners = new Set();
   const syncStatusListeners = new Set();
+  const streamingFilterListeners = new Set();
   let currentSyncStatus = { state: 'local', label: 'Local Storage' };
   let gistPushTimer = null;
 
@@ -1657,7 +1658,8 @@
         gistFilename: GIST_FILENAME,
         gistAutoSync: true,
         lastGistSync: 0,
-        anilistUsername: ''
+        anilistUsername: '',
+        streamingFilter: []
       }
     };
   }
@@ -1745,7 +1747,10 @@
       tmdbKey: raw.settings?.tmdbKey ?? raw.tmdbKey ?? '',
       omdbKey: raw.settings?.omdbKey ?? '',
       lastGistSync: Number(raw.settings?.lastGistSync || 0),
-      anilistUsername: raw.settings?.anilistUsername || ''
+      anilistUsername: raw.settings?.anilistUsername || '',
+      streamingFilter: Array.isArray(raw.settings?.streamingFilter)
+        ? Array.from(new Set(raw.settings.streamingFilter.filter(pid => pid === 'free' || Boolean(PLATFORM_BY_ID[pid]))))
+        : []
     };
     return out;
   }
@@ -2382,6 +2387,76 @@
     if (ovr?.customFreeWithAds) return true;
     const list = platforms || detectPlatforms(media);
     return list.some(p => p.freeWithAds);
+  }
+
+  // --------------------------------------------------------------------------
+  // Global Multi-Select Streaming Service Filter (persists across all pages)
+  // --------------------------------------------------------------------------
+  function getStreamingFilter() {
+    return getState().settings.streamingFilter || [];
+  }
+
+  function setStreamingFilter(ids) {
+    const clean = Array.from(new Set((Array.isArray(ids) ? ids : []).filter(pid => pid === 'free' || Boolean(PLATFORM_BY_ID[pid]))));
+    const state = getState();
+    state.settings = { ...state.settings, streamingFilter: clean };
+    saveState(state, { triggerGist: false, notify: false });
+    syncGlobalStreamingFilterBar();
+    streamingFilterListeners.forEach(fn => {
+      try { fn(clean); } catch (err) { console.error(err); }
+    });
+    return clean;
+  }
+
+  function toggleStreamingFilter(pid) {
+    const cur = new Set(getStreamingFilter());
+    if (cur.has(pid)) cur.delete(pid);
+    else cur.add(pid);
+    return setStreamingFilter(Array.from(cur));
+  }
+
+  function clearStreamingFilter() {
+    return setStreamingFilter([]);
+  }
+
+  function matchesStreamingFilter(media, extraStreaming = []) {
+    const filter = getStreamingFilter();
+    if (!filter.length) return true;
+    const platforms = detectPlatforms(media, extraStreaming);
+    if (filter.includes('free') && isFreeWithAds(media, platforms)) return true;
+    return platforms.some(p => filter.includes(p.id));
+  }
+
+  function getStreamingFilterSummary() {
+    const filter = getStreamingFilter();
+    if (!filter.length) return '';
+    return filter.map(pid => pid === 'free' ? 'Free / Audio' : (PLATFORM_BY_ID[pid]?.name || pid)).join(' + ');
+  }
+
+  function onStreamingFilterChange(fn) {
+    streamingFilterListeners.add(fn);
+    return () => streamingFilterListeners.delete(fn);
+  }
+
+  function syncGlobalStreamingFilterBar() {
+    const bar = document.getElementById('af-global-stream-bar');
+    if (!bar) return;
+    const active = new Set(getStreamingFilter());
+    bar.querySelectorAll('[data-global-pf]').forEach(btn => {
+      const isAct = active.has(btn.dataset.globalPf);
+      btn.classList.toggle('active', isAct);
+      btn.setAttribute('aria-pressed', String(isAct));
+    });
+    const statusEl = bar.querySelector('#af-stream-filter-status');
+    if (statusEl) {
+      statusEl.textContent = active.size ? `${active.size} selected` : 'All Services';
+      statusEl.className = active.size ? 'badge badge-accent' : 'badge badge-muted';
+    }
+    const clearBtn = bar.querySelector('#af-stream-filter-clear');
+    if (clearBtn) {
+      clearBtn.disabled = active.size === 0;
+      clearBtn.classList.toggle('has-active', active.size > 0);
+    }
   }
 
   function getDubLanguages(media) {
@@ -3727,7 +3802,34 @@
           </a>
         </div>
       </header>
+      <div class="af-stream-filter-bar" id="af-global-stream-bar" role="region" aria-label="Filter by Streaming Services">
+        <div class="af-stream-filter-inner">
+          <span class="af-stream-filter-label">
+            Streaming:
+            <span id="af-stream-filter-status" class="badge badge-muted">All Services</span>
+          </span>
+          <div class="af-stream-pills">
+            <button type="button" class="af-stream-pill" data-global-pf="free" aria-pressed="false">★ Free / Audio</button>
+            ${PLATFORM_CONFIG.map(p => `
+              <button type="button" class="af-stream-pill" data-global-pf="${p.id}" aria-pressed="false">
+                <span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block;flex-shrink:0;"></span>
+                ${escapeHtml(p.name)}
+              </button>
+            `).join('')}
+          </div>
+          <button type="button" class="af-stream-clear-btn" id="af-stream-filter-clear" disabled title="Reset streaming filter to show all services">✕ Clear (All Services)</button>
+        </div>
+      </div>
     `;
+
+    const streamBar = host.querySelector('#af-global-stream-bar');
+    if (streamBar) {
+      streamBar.querySelectorAll('[data-global-pf]').forEach(btn => {
+        btn.addEventListener('click', () => toggleStreamingFilter(btn.dataset.globalPf));
+      });
+      streamBar.querySelector('#af-stream-filter-clear')?.addEventListener('click', () => clearStreamingFilter());
+      syncGlobalStreamingFilterBar();
+    }
 
     checkHashSyncOnBoot();
     if (hasGist && state.settings.gistAutoSync) {
@@ -4370,6 +4472,13 @@
     detectPlatforms,
     getStreamingLinks,
     isFreeWithAds,
+    getStreamingFilter,
+    setStreamingFilter,
+    toggleStreamingFilter,
+    clearStreamingFilter,
+    matchesStreamingFilter,
+    getStreamingFilterSummary,
+    onStreamingFilterChange,
     classifyDub,
     getDubLanguages,
     getDubTrackInfo,
